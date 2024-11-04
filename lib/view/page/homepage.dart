@@ -5,6 +5,7 @@ import 'package:ezbooking_admin/view/screen/customer.dart';
 import 'package:ezbooking_admin/view/screen/dashboard.dart';
 import 'package:ezbooking_admin/view/screen/event.dart';
 import 'package:ezbooking_admin/view/screen/settings.dart';
+import 'package:ezbooking_admin/view/widgets/header.dart';
 import 'package:ezbooking_admin/view/widgets/side_bar.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -18,12 +19,11 @@ class Homepage extends StatefulWidget {
 
 class _HomepageState extends State<Homepage> {
   bool isSidebarVisible = true;
-  int tabSelectedIndex = 0;
+  int tabSelectedIndex = 1;
 
   // Function to change the screen and update the URL
   void onTabSelected(int index) {
-
-    if(Breakpoints.isMobile(context)){
+    if (Breakpoints.isMobile(context)) {
       Navigator.of(context).pop();
     }
 
@@ -110,7 +110,20 @@ class _HomepageState extends State<Homepage> {
               ),
             Flexible(
               flex: 8,
-              child: screens[tabSelectedIndex],
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 10,
+                    ),
+                    child: Header(
+                      onTapMenu: (ctx) => onTapMenu(ctx),
+                    ),
+                  ),
+                  Expanded(child: screens[tabSelectedIndex]),
+                ],
+              ),
             ),
           ],
         ),

@@ -1,4 +1,4 @@
-import 'package:ezbooking_admin/core/configs/image_helper.dart';
+import 'package:ezbooking_admin/core/utils/image_helper.dart';
 import 'package:flutter/material.dart';
 
 class Sidebar extends StatefulWidget {

@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:ezbooking_admin/core/configs/app_colors.dart';
 import 'package:ezbooking_admin/core/configs/break_points.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -13,51 +14,11 @@ class DashboardScreen extends StatelessWidget {
     final size = MediaQuery.of(context).size;
     final isDesktop = Breakpoints.isDesktop(context);
     return Scaffold(
-      backgroundColor: const Color(0xFF1E1E2D),
+      backgroundColor: AppColors.backgroundColor,
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
         child: Column(
           children: [
-            Row(
-              children: [
-                IconButton(
-                  onPressed: onTapMenu,
-                  icon: const Icon(
-                    Icons.menu,
-                    color: Colors.white,
-                    size: 36,
-                  ),
-                ),
-                Expanded(
-                  child: Container(
-                    height: 46,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1F2937),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const TextField(
-                      style: TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        icon: Icon(Icons.search, color: Colors.grey),
-                        hintText: 'Search here',
-                        hintStyle: TextStyle(color: Colors.grey),
-                        border: InputBorder.none,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                _buildIconButton(Icons.notifications_outlined),
-                const SizedBox(width: 16),
-                const CircleAvatar(
-                  radius: 20,
-                  backgroundImage: CachedNetworkImageProvider(
-                    'https://png.pngtree.com/png-vector/20191101/ourmid/pngtree-cartoon-color-simple-male-avatar-png-image_1934459.jpg',
-                  ),
-                ),
-              ],
-            ),
             // Main Content
             Expanded(
               child: Padding(
@@ -143,16 +104,7 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildIconButton(IconData icon) {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1F2937),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Icon(icon, color: Colors.grey),
-    );
-  }
+
 
   Widget _buildSearchBar() {
     return Container(
