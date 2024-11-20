@@ -1,9 +1,9 @@
-import 'package:ezbooking_admin/core/configs/app_colors.dart';
 import "dart:html" as html;
 import 'package:ezbooking_admin/core/configs/break_points.dart';
 import 'package:ezbooking_admin/view/screen/customer.dart';
 import 'package:ezbooking_admin/view/screen/dashboard.dart';
 import 'package:ezbooking_admin/view/screen/event.dart';
+import 'package:ezbooking_admin/view/screen/management.dart';
 import 'package:ezbooking_admin/view/screen/settings.dart';
 import 'package:ezbooking_admin/view/widgets/header.dart';
 import 'package:ezbooking_admin/view/widgets/side_bar.dart';
@@ -20,6 +20,7 @@ class Homepage extends StatefulWidget {
 class _HomepageState extends State<Homepage> {
   bool isSidebarVisible = true;
   int tabSelectedIndex = 1;
+  final GlobalKey<SidebarState> sideBarKey = GlobalKey<SidebarState>();
 
   // Function to change the screen and update the URL
   void onTabSelected(int index) {
@@ -78,36 +79,36 @@ class _HomepageState extends State<Homepage> {
     final isDesktop = Breakpoints.isDesktop(context);
 
     List<Widget> screens = [
-      Builder(
-        builder: (context) => DashboardScreen(
-          onTapMenu: () => onTapMenu(context),
-        ),
-      ),
-      EventScreen(),
-      CustomerScreen(),
+      DashboardScreen(),
+      Management(sideBarKey: sideBarKey),
       SettingScreen(),
     ];
 
     return Scaffold(
-      drawer: isDesktop
-          ? null
-          : Drawer(
-              child: Sidebar(
-                selectedIndex: tabSelectedIndex,
-                onTabChange: (index) => onTabSelected(index),
-              ),
-            ),
+      drawer: Visibility(
+        visible: !isDesktop,
+        child: Drawer(
+          child: Sidebar(
+            key: sideBarKey,
+            selectedIndex: tabSelectedIndex,
+            onTabChange: (index) => onTabSelected(index),
+          ),
+        ),
+      ),
       body: SafeArea(
         child: Row(
           children: [
-            if (isDesktop && isSidebarVisible)
-              Flexible(
+            Visibility(
+              visible: isDesktop && isSidebarVisible,
+              child: Flexible(
                 flex: 2,
                 child: Sidebar(
+                  key: sideBarKey,
                   selectedIndex: tabSelectedIndex,
                   onTabChange: (index) => onTabSelected(index),
                 ),
               ),
+            ),
             Flexible(
               flex: 8,
               child: Column(

@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 class Sidebar extends StatefulWidget {
   int selectedIndex;
   final Function(int) onTabChange;
-
   Sidebar({
     super.key,
     required this.selectedIndex,
@@ -12,10 +11,10 @@ class Sidebar extends StatefulWidget {
   });
 
   @override
-  State<Sidebar> createState() => _SidebarState();
+  State<Sidebar> createState() => SidebarState();
 }
 
-class _SidebarState extends State<Sidebar> {
+class SidebarState extends State<Sidebar> {
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
@@ -60,8 +59,8 @@ class _SidebarState extends State<Sidebar> {
               onTap: () => widget.onTabChange(0),
             ),
             _buildMenuItem(
-              icon: Icons.event,
-              title: 'Event',
+              icon: Icons.seventeen_mp_outlined,
+              title: 'Management',
               isActive: widget.selectedIndex == 1,
               hasSubMenu: true,
               onTap: () {
@@ -69,16 +68,10 @@ class _SidebarState extends State<Sidebar> {
               },
             ),
             _buildMenuItem(
-              icon: Icons.person,
-              title: 'Customer',
-              isActive: widget.selectedIndex == 2,
-              onTap: () => widget.onTabChange(2),
-            ),
-            _buildMenuItem(
               icon: Icons.settings,
               title: 'Settings',
-              isActive: widget.selectedIndex == 3,
-              onTap: () => widget.onTabChange(3),
+              isActive: widget.selectedIndex == 2,
+              onTap: () => widget.onTabChange(2),
             ),
 
             const Spacer(),
@@ -196,5 +189,4 @@ class _SidebarState extends State<Sidebar> {
       ),
     );
   }
-
 }

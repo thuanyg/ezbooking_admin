@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "426493695547",
+    "project_id": "ezbooking-33cb0",
+    "storage_bucket": "ezbooking-33cb0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:426493695547:android:070319aa85bf6cb73bee1e",
+        "android_client_info": {
+          "package_name": "com.example.ezbooking_admin"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAgw-c4zdaEkbr4QbGGX6MraqZpAzQ6vK8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:426493695547:android:1a52d0d767404f3d3bee1e",
+        "android_client_info": {
+          "package_name": "com.thuanht.ezbooking"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAgw-c4zdaEkbr4QbGGX6MraqZpAzQ6vK8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

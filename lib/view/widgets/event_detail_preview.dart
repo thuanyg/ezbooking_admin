@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'dart:html' as html;
+// import 'dart:html' as html;
 
 class EventPreview extends StatelessWidget {
   final Event event;
@@ -393,7 +393,7 @@ class EventPreview extends StatelessWidget {
             if (event.videoUrl != null) {
               final url = Uri.parse(event.videoUrl!);
               if (kIsWeb) {
-                html.window.open(event.videoUrl!, '_blank');
+                // html.window.open(event.videoUrl!, '_blank');
                 return;
               }
               if (await canLaunchUrl(url)) {
