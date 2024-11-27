@@ -1,14 +1,19 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ezbooking_admin/core/configs/app_colors.dart';
 import 'package:ezbooking_admin/core/configs/break_points.dart';
+import 'package:ezbooking_admin/models/category.dart';
 import 'package:ezbooking_admin/models/user.dart';
+import 'package:ezbooking_admin/providers/categories/category_provider.dart';
 import 'package:ezbooking_admin/view/screen/categories_management.dart';
 import 'package:ezbooking_admin/view/screen/customer.dart';
 import 'package:ezbooking_admin/view/screen/dashboard.dart';
+import 'package:ezbooking_admin/view/screen/organizer_management.dart';
+import 'package:ezbooking_admin/view/widgets/create_category_dialog.dart';
 import 'package:ezbooking_admin/view/widgets/side_bar.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 
 enum ScreenType { init, user, organizer, category, revenue }
 
@@ -23,6 +28,13 @@ class Management extends StatefulWidget {
 
 class _ManagementState extends State<Management> {
   ValueNotifier<ScreenType> screenType = ValueNotifier(ScreenType.init);
+  late CategoryProvider categoryProvider;
+
+  @override
+  void initState() {
+    super.initState();
+    categoryProvider = Provider.of<CategoryProvider>(context, listen: false);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,10 +48,10 @@ class _ManagementState extends State<Management> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Admin Management',
                   style: TextStyle(
-                    fontSize: 24,
+                    fontSize: isDesktop ? 24 : 16,
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
                   ),
@@ -50,7 +62,7 @@ class _ManagementState extends State<Management> {
                     crossAxisCount: 2,
                     crossAxisSpacing: 20,
                     mainAxisSpacing: 20,
-                    childAspectRatio: isDesktop ? 16 / 6 : 1,
+                    childAspectRatio: isDesktop ? 16 / 6 : 0.7,
                     children: [
                       _buildFeatureCard(
                         title: 'User Management',
@@ -104,25 +116,25 @@ class _ManagementState extends State<Management> {
               children: [
                 Row(
                   children: [
-                    GestureDetector(
-                      onTap: () => screenType.value = ScreenType.init,
-                      child: const Text(
+                    TextButton(
+                      onPressed: () => screenType.value = ScreenType.init,
+                      child: Text(
                         'Admin Management',
                         style: TextStyle(
-                          fontSize: 24,
+                          fontSize: isDesktop ? 24 : 16,
                           color: Colors.white38,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
-                    Icon(
+                    const Icon(
                       Icons.arrow_right,
                       color: Colors.white,
                     ),
                     Text(
                       'Customers',
                       style: TextStyle(
-                        fontSize: 24,
+                        fontSize: isDesktop ? 24 : 16,
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
                       ),
@@ -138,19 +150,18 @@ class _ManagementState extends State<Management> {
               ],
             );
           }
-
           if (value == ScreenType.category) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    GestureDetector(
-                      onTap: () => screenType.value = ScreenType.init,
-                      child: const Text(
+                    TextButton(
+                      onPressed: () => screenType.value = ScreenType.init,
+                      child: Text(
                         'Admin Management',
                         style: TextStyle(
-                          fontSize: 24,
+                          fontSize: isDesktop ? 24 : 16,
                           color: Colors.white38,
                           fontWeight: FontWeight.bold,
                         ),
@@ -160,10 +171,10 @@ class _ManagementState extends State<Management> {
                       Icons.arrow_right,
                       color: Colors.white,
                     ),
-                    const Text(
+                    Text(
                       'Categories',
                       style: TextStyle(
-                        fontSize: 24,
+                        fontSize: isDesktop ? 24 : 16,
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
                       ),
@@ -179,6 +190,46 @@ class _ManagementState extends State<Management> {
               ],
             );
           }
+          if (value == ScreenType.organizer) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    TextButton(
+                      onPressed: () => screenType.value = ScreenType.init,
+                      child: Text(
+                        'Admin Management',
+                        style: TextStyle(
+                          fontSize: isDesktop ? 24 : 16,
+                          color: Colors.white38,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const Icon(
+                      Icons.arrow_right,
+                      color: Colors.white,
+                    ),
+                    Text(
+                      'Organizers',
+                      style: TextStyle(
+                        fontSize: isDesktop ? 24 : 16,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                const Expanded(
+                  child: OrganizerManagement(),
+                ),
+                const SizedBox(height: 24),
+                _buildQuickActions(),
+              ],
+            );
+          }
 
           if (value == ScreenType.revenue) {
             return Column(
@@ -186,25 +237,25 @@ class _ManagementState extends State<Management> {
               children: [
                 Row(
                   children: [
-                    GestureDetector(
-                      onTap: () => screenType.value = ScreenType.init,
-                      child: const Text(
+                    TextButton(
+                      onPressed: () => screenType.value = ScreenType.init,
+                      child: Text(
                         'Admin Management',
                         style: TextStyle(
-                          fontSize: 24,
+                          fontSize: isDesktop ? 24 : 16,
                           color: Colors.white38,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
-                    Icon(
+                    const Icon(
                       Icons.arrow_right,
                       color: Colors.white,
                     ),
-                    const Text(
+                    Text(
                       'Revenues',
                       style: TextStyle(
-                        fontSize: 24,
+                        fontSize: isDesktop ? 24 : 16,
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
                       ),
@@ -220,7 +271,6 @@ class _ManagementState extends State<Management> {
               ],
             );
           }
-
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -238,18 +288,18 @@ class _ManagementState extends State<Management> {
                   crossAxisCount: 2,
                   crossAxisSpacing: 20,
                   mainAxisSpacing: 20,
-                  childAspectRatio: isDesktop ? 16 / 6 : 1,
+                  childAspectRatio: isDesktop ? 16 / 6 : 0.7,
                   children: [
                     _buildFeatureCard(
-                      title: 'User Management',
-                      description:
-                          'Add, edit, delete users and manage permissions',
-                      icon: Icons.people,
-                      color: Colors.blue,
-                      onTap: () {
-                        screenType.value = ScreenType.user;
-                      },
-                    ),
+                        title: 'User Management',
+                        description:
+                            'Add, edit, delete users and manage permissions',
+                        icon: Icons.people,
+                        color: Colors.blue,
+                        onTap: () {
+                          screenType.value = ScreenType.user;
+                        },
+                        hasDesc: isDesktop),
                     _buildFeatureCard(
                       title: 'Category Management',
                       description: 'Manage event categories and subcategories',
@@ -258,16 +308,17 @@ class _ManagementState extends State<Management> {
                       onTap: () {
                         screenType.value = ScreenType.category;
                       },
+                      hasDesc: isDesktop,
                     ),
                     _buildFeatureCard(
-                      title: 'Event Organizer Management',
-                      description: 'Review and approve event organizers',
-                      icon: Icons.business,
-                      color: Colors.orange,
-                      onTap: () {
-                        screenType.value = ScreenType.organizer;
-                      },
-                    ),
+                        title: 'Event Organizer Management',
+                        description: 'Review and approve event organizers',
+                        icon: Icons.business,
+                        color: Colors.orange,
+                        onTap: () {
+                          screenType.value = ScreenType.organizer;
+                        },
+                        hasDesc: isDesktop),
                     _buildFeatureCard(
                       title: 'Revenue Analytics',
                       description: 'Track system revenue and ticket sales',
@@ -276,6 +327,7 @@ class _ManagementState extends State<Management> {
                       onTap: () {
                         screenType.value = ScreenType.revenue;
                       },
+                      hasDesc: isDesktop,
                     ),
                   ],
                 ),
@@ -310,7 +362,7 @@ class _ManagementState extends State<Management> {
               ),
             ),
             const SizedBox(height: 16),
-            Row(
+              Row(
               children: [
                 _buildActionButton(
                   label: 'Add User',
@@ -326,6 +378,7 @@ class _ManagementState extends State<Management> {
                   icon: Icons.add_box,
                   onTap: () {
                     // Handle add category
+                    handleAddCategory();
                   },
                 ),
                 const SizedBox(width: 12),
@@ -571,6 +624,26 @@ class _ManagementState extends State<Management> {
       ),
     );
   }
+
+  void handleAddCategory() {
+    showDialog(
+      context: context,
+      builder: (contextDialog) {
+        return CreateCategoryDialog(
+          onCreate: (categoryName) {
+            // Handle category creation logic here
+            final category = Category(
+              id: DateTime.now().microsecondsSinceEpoch.toString(),
+              categoryName: categoryName,
+              createdAt: DateTime.now(),
+            );
+
+            categoryProvider.addCategory(context, category);
+          },
+        );
+      },
+    );
+  }
 }
 
 Widget _buildFeatureCard({
@@ -578,6 +651,7 @@ Widget _buildFeatureCard({
   required String description,
   required IconData icon,
   required Color color,
+  bool hasDesc = true,
   required VoidCallback onTap,
 }) {
   return Card(
@@ -620,20 +694,22 @@ Widget _buildFeatureCard({
             Text(
               title,
               style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white),
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
             const SizedBox(height: 8),
-            Text(
-              description,
-              style: TextStyle(
-                fontSize: 15,
-                color: Colors.grey[600],
+            if (hasDesc)
+              Text(
+                description,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.grey[600],
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
           ],
         ),
       ),

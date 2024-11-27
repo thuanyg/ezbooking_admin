@@ -356,157 +356,159 @@ class _CustomerScreenState extends State<CustomerScreen> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    return Column(
-      children: [
-        Container(
-          height: 64,
-          width: size.width,
-          padding: const EdgeInsets.symmetric(horizontal: 28),
-          color: Colors.black26,
-          child: Row(
-            children: [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  "Customers/",
-                  style: TextStyle(
-                    color: AppColors.primaryColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          Container(
+            height: 64,
+            width: size.width,
+            padding: const EdgeInsets.symmetric(horizontal: 28),
+            color: Colors.black26,
+            child: Row(
+              children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    "Customers/",
+                    style: TextStyle(
+                      color: AppColors.primaryColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
                   ),
                 ),
-              ),
-              const Spacer(),
-              IconButton(
-                onPressed: () {
-                  _showUserForm();
-                },
-                icon: const Icon(Icons.add),
-                color: Colors.white70,
-              )
-            ],
+                const Spacer(),
+                IconButton(
+                  onPressed: () {
+                    _showUserForm();
+                  },
+                  icon: const Icon(Icons.add),
+                  color: Colors.white70,
+                )
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 10),
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: StreamBuilder<QuerySnapshot>(
-            stream: _firestore.collection('users').snapshots(),
-            builder: (context, snapshot) {
-              if (snapshot.hasError) {
-                return Center(child: Text('Error: ${snapshot.error}'));
-              }
-
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              final users = snapshot.data?.docs.map((doc) {
-                    final data = doc.data() as Map<String, dynamic>;
-                    return UserModel.fromJson({...data, 'id': doc.id});
-                  }).toList() ??
-                  [];
-
-              if (users.isEmpty) {
-                return const Center(
-                  child: Text(
-                    'No users found',
-                    style: TextStyle(color: Colors.white70),
-                  ),
-                );
-              }
-
-              return SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: SizedBox(
-                  width: Breakpoints.isDesktop(context) ? size.width * 0.7 : size.width * 3,
-                  child: DataTable(
-                    headingTextStyle: const TextStyle(
-                        color: Colors.white70, fontWeight: FontWeight.bold),
-                    dataTextStyle: const TextStyle(color: Colors.white70),
-                    columns: const [
-                      DataColumn(label: Text('Full Name')),
-                      DataColumn(label: Text('Email')),
-                      DataColumn(label: Text('Phone')),
-                      DataColumn(label: Text('Gender')),
-                      DataColumn(label: Text('Birthday')),
-                      DataColumn(label: Text('Actions')),
-                    ],
-                    rows: users.map((user) {
-                      return DataRow(
-                        cells: [
-                          DataCell(Text(user.fullName ?? '-')),
-                          DataCell(Text(user.email ?? '-')),
-                          DataCell(Text(user.phoneNumber ?? "-")),
-                          DataCell(Text(user.gender ?? '-')),
-                          DataCell(
-                            Text(
-                              user.birthday != ""
-                                  ? DateFormat('yyyy-MM-dd').format(
-                                      DateTime.parse(user.birthday ?? ""),
-                                    )
-                                  : "-",
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: StreamBuilder<QuerySnapshot>(
+              stream: _firestore.collection('users').snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
+      
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+      
+                final users = snapshot.data?.docs.map((doc) {
+                      final data = doc.data() as Map<String, dynamic>;
+                      return UserModel.fromJson({...data, 'id': doc.id});
+                    }).toList() ??
+                    [];
+      
+                if (users.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      'No users found',
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                  );
+                }
+      
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width: Breakpoints.isDesktop(context) ? size.width * 0.7 : size.width * 3,
+                    child: DataTable(
+                      headingTextStyle: const TextStyle(
+                          color: Colors.white70, fontWeight: FontWeight.bold),
+                      dataTextStyle: const TextStyle(color: Colors.white70),
+                      columns: const [
+                        DataColumn(label: Text('Full Name')),
+                        DataColumn(label: Text('Email')),
+                        DataColumn(label: Text('Phone')),
+                        DataColumn(label: Text('Gender')),
+                        DataColumn(label: Text('Birthday')),
+                        DataColumn(label: Text('Actions')),
+                      ],
+                      rows: users.map((user) {
+                        return DataRow(
+                          cells: [
+                            DataCell(Text(user.fullName ?? '-')),
+                            DataCell(Text(user.email ?? '-')),
+                            DataCell(Text(user.phoneNumber ?? "-")),
+                            DataCell(Text(user.gender ?? '-')),
+                            DataCell(
+                              Text(
+                                user.birthday != ""
+                                    ? DateFormat('yyyy-MM-dd').format(
+                                        DateTime.parse(user.birthday ?? ""),
+                                      )
+                                    : "-",
+                              ),
                             ),
-                          ),
-                          DataCell(
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.edit,
-                                    color: Colors.white70,
+                            DataCell(
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.edit,
+                                      color: Colors.white70,
+                                    ),
+                                    onPressed: () => _showUserForm(user: user),
                                   ),
-                                  onPressed: () => _showUserForm(user: user),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.delete),
-                                  color: Colors.red,
-                                  onPressed: () => showDialog(
-                                    context: context,
-                                    builder: (context) => AlertDialog(
-                                      title: const Text('Delete User'),
-                                      content: Text(
-                                          'Are you sure you want to delete ${user.fullName}?'),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () => Navigator.pop(context),
-                                          child: const Text('Cancel'),
-                                        ),
-                                        ElevatedButton(
-                                          onPressed: () {
-                                            Navigator.pop(context);
-                                            _deleteUser(user);
-                                          },
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor:
-                                                AppColors.primaryColor,
+                                  IconButton(
+                                    icon: const Icon(Icons.delete),
+                                    color: Colors.red,
+                                    onPressed: () => showDialog(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        title: const Text('Delete User'),
+                                        content: Text(
+                                            'Are you sure you want to delete ${user.fullName}?'),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.pop(context),
+                                            child: const Text('Cancel'),
                                           ),
-                                          child: const Text(
-                                            'Delete',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
+                                          ElevatedButton(
+                                            onPressed: () {
+                                              Navigator.pop(context);
+                                              _deleteUser(user);
+                                            },
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor:
+                                                  AppColors.primaryColor,
+                                            ),
+                                            child: const Text(
+                                              'Delete',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
-                      );
-                    }).toList(),
+                          ],
+                        );
+                      }).toList(),
+                    ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

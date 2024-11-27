@@ -76,8 +76,6 @@ class _EditEventState extends State<EditEvent> {
         TextEditingController(text: event?.organizer?.address ?? '');
     organizerFacebookController =
         TextEditingController(text: event?.organizer?.facebook ?? '');
-    organizerYoutubeController =
-        TextEditingController(text: event?.organizer?.youtube ?? '');
     organizerWebsiteController =
         TextEditingController(text: event?.organizer?.website ?? '');
 
@@ -140,7 +138,6 @@ class _EditEventState extends State<EditEvent> {
           phoneNumber: organizerPhoneController.text,
           address: organizerAddressController.text,
           facebook: organizerFacebookController.text,
-          youtube: organizerYoutubeController.text,
           website: organizerWebsiteController.text,
         ),
       );

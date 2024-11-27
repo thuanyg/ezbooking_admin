@@ -1,10 +1,13 @@
 import 'package:ezbooking_admin/core/configs/app_colors.dart';
+import 'package:ezbooking_admin/datasource/categories/category_datasource_impl.dart';
 import 'package:ezbooking_admin/datasource/events/event_datasource.dart';
 import 'package:ezbooking_admin/firebase_options.dart';
+import 'package:ezbooking_admin/providers/categories/category_provider.dart';
 import 'package:ezbooking_admin/providers/events/create_event_provider.dart';
 import 'package:ezbooking_admin/providers/events/delete_event_provider.dart';
 import 'package:ezbooking_admin/providers/events/fetch_events_provider.dart';
 import 'package:ezbooking_admin/providers/events/update_event_provider.dart';
+import 'package:ezbooking_admin/providers/organizers/organizer_provider.dart';
 import 'package:ezbooking_admin/view/page/homepage.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -57,6 +60,10 @@ class MyApp extends StatelessWidget {
           ChangeNotifierProvider(
             create: (_) => DeleteEventProvider(EventDatasource()),
           ),
+          ChangeNotifierProvider(
+            create: (_) => CategoryProvider(CategoryDatasourceImpl()),
+          ),
+          ChangeNotifierProvider(create: (_) => OrganizerProvider()),
         ],
         child: const Homepage(),
       ),
