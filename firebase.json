@@ -1,0 +1,38 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "ezbooking-33cb0",
+          "appId": "1:426493695547:android:070319aa85bf6cb73bee1e",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "ezbooking-33cb0",
+          "configurations": {
+            "android": "1:426493695547:android:070319aa85bf6cb73bee1e",
+            "ios": "1:426493695547:ios:eb57788f45cab5413bee1e",
+            "macos": "1:426493695547:ios:eb57788f45cab5413bee1e",
+            "web": "1:426493695547:web:378e730c90a982c43bee1e",
+            "windows": "1:426493695547:web:946c1caa54125c0f3bee1e"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ]
+    }
+  ]
+}
