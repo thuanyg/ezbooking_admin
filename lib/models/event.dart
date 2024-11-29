@@ -14,7 +14,7 @@ class Event {
   List<String> imageUrls;
   String? videoUrl;
   String? additionalInfo;
-  Organizer? organizer;
+  String? organizer;
 
   Event({
     this.id,
@@ -50,7 +50,7 @@ class Event {
       imageUrls: List<String>.from(map['imageUrls'] ?? []),
       videoUrl: map['videoUrl'],
       additionalInfo: map['additionalInfo'],
-      organizer: Organizer.fromJson(map['organizer']),
+      organizer: map['organizer'] as String?,
     );
   }
 
@@ -71,7 +71,7 @@ class Event {
       'thumbnail': thumbnail,
       'poster': poster,
       'additionalInfo': additionalInfo,
-      'organizer': organizer?.toJson(),
+      'organizer': organizer,
     };
   }
 }

@@ -16,7 +16,7 @@ class Homepage extends StatefulWidget {
 
 class HomepageState extends State<Homepage> {
   bool isSidebarVisible = true;
-  int tabSelectedIndex = 1;
+  int tabSelectedIndex = 0;
   String? searchQuery;
   final GlobalKey<SidebarState> sideBarKey = GlobalKey<SidebarState>();
 

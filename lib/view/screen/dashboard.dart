@@ -1,152 +1,226 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:ezbooking_admin/core/configs/app_colors.dart';
 import 'package:ezbooking_admin/core/configs/break_points.dart';
+import 'package:ezbooking_admin/providers/statistics/statistic_processors.dart';
+import 'package:ezbooking_admin/providers/statistics/statistic_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import 'package:syncfusion_flutter_charts/charts.dart';
 
-class DashboardScreen extends StatelessWidget {
-
-
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  ValueNotifier<String> filterYear = ValueNotifier(2024.toString());
+
+  late StatisticProvider statisticProvider;
+
+  @override
+  void initState() {
+    statisticProvider = Provider.of<StatisticProvider>(context, listen: false);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      statisticProvider.fetchStatistics();
+    });
+
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+
     final isDesktop = Breakpoints.isDesktop(context);
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-        child: Column(
-          children: [
-            // Main Content
-            Expanded(
-              child: Padding(
-                padding: isDesktop ? const EdgeInsets.all(16.0) : const EdgeInsets.symmetric(vertical: 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Dashboard Content
-                    Expanded(
-                      child: SingleChildScrollView(
-                        child: Column(
-                          children: [
-                            // Top Cards Row
-                            isDesktop ?
-                              Row(
-                                children: [
-                                  Expanded(child: _buildTicketSoldCard()),
-                                  const SizedBox(width: 16),
-                                  Expanded(child: _buildStatsCard()),
-                                  const SizedBox(width: 16),
-                                  Expanded(child: _buildConversionCard()),
-                                ],
-                              ) : Column(
+      body: Consumer<StatisticProvider>(
+        builder: (context, value, child) {
+
+          // Calculate summary metrics
+          final totalRevenue = _calculateTotalRevenue(value.statistics);
+          final totalTicketsSold = _calculateTotalTicketsSold(value.statistics);
+          final eventCounts = _calculateEventCounts(value.statistics);
+          final revenueByEvent = _calculateRevenueByEvent(value.statistics);
+
+          if (value.isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+            child: Column(
+              children: [
+                // Main Content
+                Expanded(
+                  child: Padding(
+                    padding: isDesktop
+                        ? const EdgeInsets.all(16.0)
+                        : const EdgeInsets.symmetric(vertical: 10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Dashboard Content
+                        Expanded(
+                          child: SingleChildScrollView(
+                            child: Column(
                               children: [
-                                _buildTicketSoldCard(),
-                                const SizedBox(height: 16),
-                                _buildStatsCard(),
-                                const SizedBox(height: 16),
-                                _buildConversionCard(),
+                                _buildTicketSoldCard(
+                                  statisticProvider,
+                                  context,
+                                ),
+                                const SizedBox(height: 24),
+                                _buildOverviewCards(totalRevenue, totalTicketsSold),
+                                const SizedBox(height: 24),
+                                // Charts Row
+                                ValueListenableBuilder(
+                                  valueListenable: filterYear,
+                                  builder: (context, value, child) =>
+                                      buildRevenueChart(
+                                          statisticProvider.statistics),
+                                ),
+                                const SizedBox(height: 24),
+                                _buildRevenueByEventChart(revenueByEvent),
+                                // Bottom Section
+                                // _buildRecentEventList(),
                               ],
                             ),
-                            const SizedBox(height: 24),
-                            // Charts Row
-                            isDesktop ? Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  flex: 2,
-                                  child: _buildRevenueChart(),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: _buildBestSellingSection(),
-                                ),
-                              ],
-                            ) : Column(
-                              children: [
-                                _buildRevenueChart(),
-                                const SizedBox(height: 16),
-                                _buildBestSellingSection(),
-                              ],
-                            ),
-                            const SizedBox(height: 24),
-                            // Bottom Section
-                            isDesktop ? Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(child: _buildLatestSales()),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  flex: 2,
-                                  child: _buildRecentEventList(),
-                                ),
-                              ],
-                            ) : Column(
-                              children: [
-                                _buildLatestSales(),
-                                const SizedBox(height: 16),
-                                _buildRecentEventList(),
-                              ],
-                            ),
-                          ],
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 
 
-
-  Widget _buildSearchBar() {
-    return Container(
-      width: 300,
-      height: 40,
-      decoration: BoxDecoration(
-        color: const Color(0xFF171723),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: TextField(
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          hintText: 'Search here',
-          hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-          prefixIcon: const Icon(Icons.search, color: Colors.white),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-        ),
-      ),
-    );
+  // Calculate total revenue across all statistics
+  double _calculateTotalRevenue(List<Statistic> statistics) {
+    return statistics.fold(0.0, (sum, stat) => sum + (stat.order.totalPrice * 0.1));
   }
 
-  Widget _buildProfileSection() {
+  // Calculate total tickets sold
+  int _calculateTotalTicketsSold(List<Statistic> statistics) {
+    return statistics.fold(0, (sum, stat) => sum + stat.order.ticketQuantity);
+  }
+
+  // Calculate event counts
+  Map<String, int> _calculateEventCounts(List<Statistic> statistics) {
+    final Map<String, int> eventCounts = {};
+    for (var stat in statistics) {
+      eventCounts[stat.event.name] =
+          (eventCounts[stat.event.name] ?? 0) + stat.order.ticketQuantity;
+    }
+    return eventCounts;
+  }
+
+  // Calculate revenue by event
+  Map<String, double> _calculateRevenueByEvent(List<Statistic> statistics) {
+    final Map<String, double> revenueByEvent = {};
+    for (var stat in statistics) {
+      revenueByEvent[stat.event.name] =
+          (revenueByEvent[stat.event.name] ?? 0) + (stat.order.totalPrice * 0.1);
+    }
+    return revenueByEvent;
+  }
+
+  // Overview Cards Widget
+  Widget _buildOverviewCards(double totalRevenue, int totalTicketsSold) {
     return Row(
       children: [
-        IconButton(
-          icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-          onPressed: () {},
+        Expanded(
+          child: Card(
+            elevation: 5,
+            color: const Color(0xFF171723),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.monetization_on,
+                      color: Colors.green, size: 40),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Total Revenue',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  Text(
+                    NumberFormat.currency(symbol: '\$').format(totalRevenue),
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
-        const CircleAvatar(
-          radius: 16,
-          backgroundImage: NetworkImage('https://placekitten.com/100/100'),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Card(
+            elevation: 5,
+            color: const Color(0xFF171723),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.confirmation_number,
+                      color: Colors.blue, size: 40),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Total Tickets Sold',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  Text(
+                    totalTicketsSold.toString(),
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildTicketSoldCard() {
+
+  Widget _buildTicketSoldCard(
+      StatisticProvider provider, BuildContext context) {
+    final orders = provider.getOrders(provider.statistics);
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: const Color(0xFF2ECC71),
+        color: const Color(0xFF171723),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -160,9 +234,9 @@ class DashboardScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            '456,502',
-            style: TextStyle(
+          Text(
+            provider.calculateTicketToday(orders).toString(),
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 32,
               fontWeight: FontWeight.bold,
@@ -170,18 +244,15 @@ class DashboardScreen extends StatelessWidget {
           ),
           Row(
             children: [
-              const Icon(Icons.arrow_upward, color: Colors.white, size: 16),
-              const Text(
-                '1.4%',
-                style: TextStyle(color: Colors.white),
-              ),
               const Spacer(),
               TextButton(
-                onPressed: () {},
+                onPressed: () async {
+                  await showOrderListBottomSheet(provider.statistics, context);
+                },
                 child: const Row(
                   children: [
                     Text(
-                      'View Details',
+                      'View All',
                       style: TextStyle(color: Colors.white),
                     ),
                     Icon(Icons.arrow_forward, color: Colors.white, size: 16),
@@ -195,117 +266,107 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatsCard() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: const Color(0xFF171723),
-        borderRadius: BorderRadius.circular(16),
+  Widget _buildRevenueByEventChart(Map<String, double> revenueByEvent) {
+    return Card(
+      elevation: 5,
+      color: const Color(0xFF171723),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Statistics',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-            ),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 100,
-            child: LineChart(
-              LineChartData(
-                gridData: FlGridData(show: false),
-                titlesData: FlTitlesData(show: false),
-                borderData: FlBorderData(show: false),
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: const [
-                      FlSpot(0, 3),
-                      FlSpot(2.6, 2),
-                      FlSpot(4.9, 5),
-                      FlSpot(6.8, 3.1),
-                      FlSpot(8, 4),
-                      FlSpot(9.5, 3),
-                      FlSpot(11, 4),
-                    ],
-                    isCurved: true,
-                    color: const Color(0xFF2ECC71),
-                    barWidth: 3,
-                    dotData: FlDotData(show: false),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      color: const Color(0xFF2ECC71).withOpacity(0.1),
-                    ),
-                  ),
-                ],
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Revenue by Event',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 10),
+            SfCartesianChart(
+              primaryXAxis: const CategoryAxis(
+                labelStyle: TextStyle(color: Colors.white),
+              ),
+              primaryYAxis: NumericAxis(
+                labelStyle: const TextStyle(color: Colors.white),
+                labelFormat: '{value}',
+                numberFormat: NumberFormat.currency(locale: 'en_US', symbol: '\$', decimalDigits: 0),
+              ),
+              series: <CartesianSeries>[
+                ColumnSeries<MapEntry<String, double>, String>(
+                  color: AppColors.primaryColor,
+                  dataSource: revenueByEvent.entries.toList(),
+                  xValueMapper: (entry, _) => entry.key,
+                  yValueMapper: (entry, _) => entry.value,
+                  dataLabelSettings: const DataLabelSettings(
+                    isVisible: true,
+                    textStyle: TextStyle(color: Colors.white),
+                    labelPosition: ChartDataLabelPosition.outside,
+                  ),
+                )
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildConversionCard() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: const Color(0xFF171723),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  Future<void> showOrderListBottomSheet(
+      List<Statistic> statistics, BuildContext context) async {
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.85,
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: AppColors.drawerColor,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Increase 25%',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
+              // Title
+              const Center(
+                child: Text(
+                  'Ticket Order List',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.more_vert, color: Colors.white),
-                onPressed: () {},
+              const SizedBox(height: 10),
+
+              // Divider
+              const Divider(color: Colors.grey),
+
+              // Expandable list of orders
+              Expanded(
+                child: OrderTicketList(statistics: statistics),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 100,
-            child: BarChart(
-              BarChartData(
-                gridData: FlGridData(show: false),
-                titlesData: FlTitlesData(show: false),
-                borderData: FlBorderData(show: false),
-                barGroups: [
-                  BarChartGroupData(x: 0, barRods: [
-                    BarChartRodData(toY: 8, color: const Color(0xFF2ECC71))
-                  ]),
-                  BarChartGroupData(x: 1, barRods: [
-                    BarChartRodData(toY: 10, color: const Color(0xFF2ECC71))
-                  ]),
-                  BarChartGroupData(x: 2, barRods: [
-                    BarChartRodData(toY: 6, color: const Color(0xFF2ECC71))
-                  ]),
-                  BarChartGroupData(x: 3, barRods: [
-                    BarChartRodData(toY: 4, color: const Color(0xFF2ECC71))
-                  ]),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildRevenueChart() {
+  Widget buildRevenueChart(List<Statistic> statistics) {
+    // Process revenue data for the year 2020
+    final revenueSpots = RevenueChartProcessor.processRevenueData(
+        statistics, int.parse(filterYear.value));
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -325,16 +386,38 @@ class DashboardScreen extends StatelessWidget {
                   fontSize: 16,
                 ),
               ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1E1E2D),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Text(
-                  '2020',
-                  style: TextStyle(color: Colors.white),
+              PopupMenuButton<String>(
+                onSelected: (selectedYear) {
+                  // Handle the year selection logic here
+                  filterYear.value = selectedYear;
+                },
+                itemBuilder: (context) {
+                  return <PopupMenuEntry<String>>[
+                    const PopupMenuItem<String>(
+                      value: '2024',
+                      child: Text('2024'),
+                    ),
+                    const PopupMenuItem<String>(
+                      value: '2023',
+                      child: Text('2023'),
+                    ),
+                    const PopupMenuItem<String>(
+                      value: '2022',
+                      child: Text('2022'),
+                    ),
+                  ];
+                },
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E1E2D),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    filterYear.value,
+                    style: const TextStyle(color: Colors.white),
+                  ),
                 ),
               ),
             ],
@@ -360,6 +443,7 @@ class DashboardScreen extends StatelessWidget {
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
+                      interval: 1,
                       getTitlesWidget: (value, meta) {
                         const months = [
                           'Jan',
@@ -375,26 +459,9 @@ class DashboardScreen extends StatelessWidget {
                           'Nov',
                           'Dec'
                         ];
-                        if (value.toInt() >= 0 &&
-                            value.toInt() < months.length) {
-                          return Text(
-                            months[value.toInt()],
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.5),
-                              fontSize: 12,
-                            ),
-                          );
-                        }
-                        return const Text('');
-                      },
-                    ),
-                  ),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      getTitlesWidget: (value, meta) {
+                        int index = value.toInt();
                         return Text(
-                          '\$${value.toInt()}K',
+                         months[index],
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.5),
                             fontSize: 12,
@@ -403,208 +470,30 @@ class DashboardScreen extends StatelessWidget {
                       },
                     ),
                   ),
-                  rightTitles:
-                      AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  topTitles:
-                      AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (value, meta) {
+                        return Text(
+                          '\$${value.toInt()}',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.5),
+                            fontSize: 12,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
                 ),
                 borderData: FlBorderData(show: false),
                 lineBarsData: [
-                  LineChartBarData(
-                    spots: const [
-                      FlSpot(0, 30),
-                      FlSpot(2, 35),
-                      FlSpot(4, 32),
-                      FlSpot(6, 40),
-                      FlSpot(8, 35),
-                      FlSpot(10, 38),
-                      FlSpot(11, 36),
-                    ],
-                    isCurved: true,
-                    color: const Color(0xFF2ECC71),
-                    barWidth: 3,
-                    dotData: FlDotData(show: false),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      color: const Color(0xFF2ECC71).withOpacity(0.1),
-                    ),
-                  ),
+                  RevenueChartProcessor.createRevenueChartBar(revenueSpots)
                 ],
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBestSellingSection() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: const Color(0xFF171723),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Best Selling',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-            ),
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            height: 200,
-            child: BarChart(
-              BarChartData(
-                alignment: BarChartAlignment.spaceAround,
-                gridData: FlGridData(show: false),
-                titlesData: FlTitlesData(
-                  show: true,
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: false,
-                    ),
-                  ),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  rightTitles: AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  topTitles: AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                ),
-                borderData: FlBorderData(show: false),
-                barGroups: [
-                  BarChartGroupData(x: 0, barRods: [
-                    BarChartRodData(toY: 15, color: const Color(0xFF2ECC71))
-                  ]),
-                  BarChartGroupData(x: 1, barRods: [
-                    BarChartRodData(toY: 8, color: const Color(0xFF2ECC71))
-                  ]),
-                  BarChartGroupData(x: 2, barRods: [
-                    BarChartRodData(toY: 12, color: const Color(0xFF2ECC71))
-                  ]),
-                  BarChartGroupData(x: 3, barRods: [
-                    BarChartRodData(toY: 7, color: const Color(0xFF2ECC71))
-                  ]),
-                  BarChartGroupData(x: 4, barRods: [
-                    BarChartRodData(toY: 10, color: const Color(0xFF2ECC71))
-                  ]),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLatestSales() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: const Color(0xFF171723),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Latest Sales',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.more_horiz, color: Colors.white),
-                onPressed: () {},
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _buildSaleItem(
-            name: 'Olivia Johnston',
-            amount: '\$1,999.00',
-            time: '5m ago',
-          ),
-          _buildSaleItem(
-            name: 'Spiderman',
-            amount: '\$699.00',
-            time: '3m ago',
-          ),
-          _buildSaleItem(
-            name: 'Doormat',
-            amount: '\$999.00',
-            time: '9m ago',
-          ),
-          _buildSaleItem(
-            name: 'Lili Trump',
-            amount: '\$399.00',
-            time: '8m ago',
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSaleItem({
-    required String name,
-    required String amount,
-    required String time,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: const Color(0xFF2ECC71).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(
-              Icons.person_outline,
-              color: Color(0xFF2ECC71),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                  ),
-                ),
-                Text(
-                  amount,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.5),
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Text(
-            time,
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.5),
-              fontSize: 12,
             ),
           ),
         ],
@@ -686,10 +575,6 @@ class DashboardScreen extends StatelessWidget {
             height: 60,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
-              image: const DecorationImage(
-                image: AssetImage('assets/placeholder.jpg'),
-                fit: BoxFit.cover,
-              ),
             ),
           ),
           const SizedBox(width: 16),
@@ -739,6 +624,291 @@ class DashboardScreen extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class OrderTicketList extends StatelessWidget {
+  final List<Statistic> statistics;
+
+  const OrderTicketList({Key? key, required this.statistics}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Responsive grid count based on screen width
+        int crossAxisCount = constraints.maxWidth > 1200
+            ? 3
+            : constraints.maxWidth > 800
+                ? 2
+                : 1;
+
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: ListView.builder(
+            itemCount: statistics.length,
+            itemBuilder: (context, index) {
+              return OrderTicketCard(
+                statistic: statistics[index],
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+}
+
+class OrderTicketCard extends StatelessWidget {
+  final Statistic statistic;
+
+  const OrderTicketCard({super.key, required this.statistic});
+
+  // Helper method to get status color
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'paid':
+        return Colors.green;
+      case 'pending':
+        return Colors.orange;
+      case 'cancelled':
+        return Colors.red;
+      case 'completed':
+        return Colors.blue;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF1E1E2D),
+            Color(0xFF171723),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            spreadRadius: 1,
+            blurRadius: 5,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Stack(
+          children: [
+            // Background pattern or texture
+
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Order Header
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Order #${statistic.order.id}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: _getStatusColor(statistic.order.status)
+                              .withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          statistic.order.status,
+                          style: TextStyle(
+                            color: _getStatusColor(statistic.order.status),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  // Event and Ticket Details
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Customer: ${statistic.user.fullName}',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 16,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Event: ${statistic.event.name}',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 16,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        'Organizer: ${statistic.organizer.name}',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 16,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.confirmation_number_outlined,
+                            color: Colors.white70,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${statistic.order.ticketQuantity} Ticket(s)',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            'Price: \$${statistic.ticket.ticketPrice}',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.calendar_today_outlined,
+                            color: Colors.white70,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            "Created Date: ${DateFormat('MMM dd, yyyy').format(statistic.order.createdAt.toDate())}",
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  // Footer with Total Price
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Total Price',
+                        style: TextStyle(
+                          color: Colors.white54,
+                          fontSize: 14,
+                        ),
+                      ),
+                      Text(
+                        '\$${statistic.order.totalPrice.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Deduction',
+                        style: TextStyle(
+                          color: Colors.white54,
+                          fontSize: 14,
+                        ),
+                      ),
+                      Text(
+                        '10%',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Organizer receive:',
+                        style: TextStyle(
+                          color: Colors.white54,
+                          fontSize: 14,
+                        ),
+                      ),
+                      Text(
+                        '\$${(statistic.order.totalPrice * 0.9).toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'EzBooking receive:',
+                        style: TextStyle(
+                          color: Colors.white54,
+                          fontSize: 16,
+                        ),
+                      ),
+                      Text(
+                        '\$${(statistic.order.totalPrice * 0.1).toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

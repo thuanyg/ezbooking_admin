@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ezbooking_admin/core/configs/app_colors.dart';
 import 'package:ezbooking_admin/core/configs/break_points.dart';
-import 'package:ezbooking_admin/core/utils/dialogs.dart';
 import 'package:ezbooking_admin/models/category.dart';
 import 'package:ezbooking_admin/models/user.dart';
 import 'package:ezbooking_admin/providers/categories/category_provider.dart';
@@ -9,6 +8,7 @@ import 'package:ezbooking_admin/view/screen/categories_management.dart';
 import 'package:ezbooking_admin/view/screen/customer.dart';
 import 'package:ezbooking_admin/view/screen/dashboard.dart';
 import 'package:ezbooking_admin/view/screen/organizer_management.dart';
+import 'package:ezbooking_admin/view/screen/view_report.dart';
 import 'package:ezbooking_admin/view/widgets/create_category_dialog.dart';
 import 'package:ezbooking_admin/view/widgets/side_bar.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -385,7 +385,12 @@ class _ManagementState extends State<Management> {
                   label: 'View Reports',
                   icon: Icons.bar_chart,
                   onTap: () {
-                    // Handle view reports
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const StatisticsSummaryPage(),
+                      ),
+                    );
                   },
                 ),
               ],

@@ -69,6 +69,7 @@ class DialogUtils {
                 children: [
                   Text(
                     title,
+                    textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: Colors.black,
                       fontSize: 18,

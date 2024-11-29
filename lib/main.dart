@@ -5,9 +5,9 @@ import 'package:ezbooking_admin/firebase_options.dart';
 import 'package:ezbooking_admin/providers/categories/category_provider.dart';
 import 'package:ezbooking_admin/providers/events/create_event_provider.dart';
 import 'package:ezbooking_admin/providers/events/delete_event_provider.dart';
-import 'package:ezbooking_admin/providers/events/fetch_events_provider.dart';
 import 'package:ezbooking_admin/providers/events/update_event_provider.dart';
 import 'package:ezbooking_admin/providers/organizers/organizer_provider.dart';
+import 'package:ezbooking_admin/providers/statistics/statistic_provider.dart';
 import 'package:ezbooking_admin/view/page/homepage.dart';
 import 'package:ezbooking_admin/view/page/login_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -25,7 +25,22 @@ void main() async {
   } catch (e) {
     print('Error initializing Firebase: $e');
   }
-  runApp(MyApp());
+  runApp(MultiProvider(providers: [
+    ChangeNotifierProvider(
+      create: (_) => CategoryProvider(CategoryDatasourceImpl()),
+    ),
+    ChangeNotifierProvider(
+      create: (_) => UpdateEventProvider(EventDatasource()),
+    ),
+    ChangeNotifierProvider(
+      create: (_) => CreateEventProvider(EventDatasource()),
+    ),
+    ChangeNotifierProvider(
+      create: (_) => DeleteEventProvider(EventDatasource()),
+    ),
+    ChangeNotifierProvider(create: (_) => OrganizerProvider()),
+    ChangeNotifierProvider(create: (_) => StatisticProvider()),
+  ], child: MyApp()));
 }
 
 class MyApp extends StatelessWidget {
@@ -33,6 +48,7 @@ class MyApp extends StatelessWidget {
 
   final currentUser = FirebaseAuth.instance.currentUser;
   final homeKey = GlobalKey<HomepageState>();
+
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
@@ -52,27 +68,8 @@ class MyApp extends StatelessWidget {
           home: child,
         );
       },
-      child: MultiProvider(
-        providers: [
-          ChangeNotifierProvider(
-            create: (_) => CategoryProvider(CategoryDatasourceImpl()),
-          ),
-          ChangeNotifierProvider(
-            create: (_) => FetchEventsProvider(EventDatasource()),
-          ),
-          ChangeNotifierProvider(
-            create: (_) => UpdateEventProvider(EventDatasource()),
-          ),
-          ChangeNotifierProvider(
-            create: (_) => CreateEventProvider(EventDatasource()),
-          ),
-          ChangeNotifierProvider(
-            create: (_) => DeleteEventProvider(EventDatasource()),
-          ),
-          ChangeNotifierProvider(create: (_) => OrganizerProvider()),
-        ],
-        child: currentUser == null ? const AdminLoginPage() : Homepage(key: homeKey),
-      ),
+      child:
+          currentUser == null ? const AdminLoginPage() : Homepage(key: homeKey),
     );
   }
 }

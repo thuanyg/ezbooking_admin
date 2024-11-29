@@ -1,8 +1,15 @@
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:ezbooking_admin/core/utils/dialogs.dart';
 import 'package:ezbooking_admin/core/utils/image_helper.dart';
 import 'package:ezbooking_admin/view/page/login_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:printing/printing.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 
 class Sidebar extends StatefulWidget {
   int selectedIndex;
@@ -19,6 +26,145 @@ class Sidebar extends StatefulWidget {
 }
 
 class SidebarState extends State<Sidebar> {
+  // Generate and save PDF
+  Future<File?> generateAndSavePdf() async {
+    try {
+      // Create PDF document
+      final pdf = pw.Document(version: PdfVersion.pdf_1_5, compress: true);
+
+      // Add pages to the PDF
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          build: (pw.Context context) => _buildPdfContent(),
+        ),
+      );
+
+      // Get the documents directory
+      // final directory = await getApplicationDocumentsDirectory();
+
+      // Create a unique filename with timestamp
+      final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+      final file = File('/statistics_report_$timestamp.pdf');
+
+      // Save the PDF
+      await file.writeAsBytes(await pdf.save());
+
+      return file;
+    } catch (e) {
+      print('Error generating PDF: $e');
+      return null;
+    }
+  }
+
+  // Generate PDF content
+  List<pw.Widget> _buildPdfContent() {
+    // Calculate summary metrics
+    // final totalRevenue = _calculateTotalRevenue();
+    // final totalTicketsSold = _calculateTotalTicketsSold();
+    // final eventCounts = _calculateEventCounts();
+    // final revenueByEvent = _calculateRevenueByEvent();
+
+    return [
+      // Title
+      pw.Header(
+        level: 0,
+        child: pw.Text(
+          'Event Statistics Report',
+          style: pw.TextStyle(
+            fontSize: 24,
+            fontWeight: pw.FontWeight.bold,
+          ),
+        ),
+      ),
+
+      // Overall Summary
+      pw.Paragraph(
+        text: 'Report Generated: }',
+      ),
+
+      pw.Paragraph(
+        text: 'Total Revenue: \$',
+        style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+      ),
+
+      pw.Paragraph(
+        text: 'Total Tickets Sold: ',
+        style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+      ),
+
+      // Event Distribution
+      pw.Header(
+        level: 1,
+        child: pw.Text('Ticket Sales by Event'),
+      ),
+      pw.Table.fromTextArray(
+        context: null,
+        data: [
+          ['Event', 'Tickets Sold'],
+        ],
+      ),
+
+      // Revenue by Event
+      pw.Header(
+        level: 1,
+        child: pw.Text('Revenue by Event'),
+      ),
+      pw.Table.fromTextArray(
+        context: null,
+        data: [
+          ['Event', 'Revenue'],
+        ],
+      ),
+
+      // Detailed Statistics
+      pw.Header(
+        level: 1,
+        child: pw.Text('Detailed Statistics'),
+      ),
+      pw.Table.fromTextArray(
+        context: null,
+        data: [
+          ['Event', 'Tickets', 'Revenue', 'Date'],
+        ],
+      ),
+    ];
+  }
+
+  // Preview PDF (optional)
+  Future<void> previewPdf(BuildContext context) async {
+    final pdf = await generatePdfDocument();
+
+    // Show PDF Preview
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          appBar: AppBar(title: Text('PDF Preview')),
+          body: PdfPreview(
+            build: (format) => pdf,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Generate PDF Document (used for preview and saving)
+  Future<Uint8List> generatePdfDocument() async {
+    final pdf = pw.Document(version: PdfVersion.pdf_1_5, compress: true);
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(32),
+        build: (pw.Context context) => _buildPdfContent(),
+      ),
+    );
+
+    return pdf.save();
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
@@ -100,49 +246,65 @@ class SidebarState extends State<Sidebar> {
             const Spacer(),
 
             // Bottom Summary Report Button
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF059669), // Green color
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(
-                      Icons.summarize,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                    SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Get summary',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w500,
+            GestureDetector(
+              onTap: ()async {
+
+
+                // Option 1: Save PDF to device
+                final file = await generateAndSavePdf();
+                if (file != null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('PDF saved: ${file.path}')),
+                  );
+                }
+
+                // Option 2: Preview PDF
+                await previewPdf(context);
+              },
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF059669), // Green color
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(
+                        Icons.summarize,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Get summary',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
-                        ),
-                        Text(
-                          'Report now',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
+                          Text(
+                            'Report now',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    Spacer(),
-                    Icon(
-                      Icons.arrow_forward,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ],
+                        ],
+                      ),
+                      Spacer(),
+                      Icon(
+                        Icons.arrow_forward,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
