@@ -166,7 +166,7 @@ class _OrganizerManagementScreenState extends State<OrganizerManagement> {
                   Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      "Customers/",
+                      "Organizer/",
                       style: TextStyle(
                         color: AppColors.primaryColor,
                         fontWeight: FontWeight.bold,

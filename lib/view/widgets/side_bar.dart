@@ -1,9 +1,13 @@
+import 'package:ezbooking_admin/core/utils/dialogs.dart';
 import 'package:ezbooking_admin/core/utils/image_helper.dart';
+import 'package:ezbooking_admin/view/page/login_page.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class Sidebar extends StatefulWidget {
   int selectedIndex;
   final Function(int) onTabChange;
+
   Sidebar({
     super.key,
     required this.selectedIndex,
@@ -68,10 +72,29 @@ class SidebarState extends State<Sidebar> {
               },
             ),
             _buildMenuItem(
-              icon: Icons.settings,
-              title: 'Settings',
+              icon: Icons.logout,
+              title: 'Logout',
               isActive: widget.selectedIndex == 2,
-              onTap: () => widget.onTabChange(2),
+              onTap: () {
+                DialogUtils.showConfirmationDialog(
+                  context: context,
+                  size: MediaQuery.of(context).size,
+                  title: "Are you sure you want to logout?",
+                  textCancelButton: "No",
+                  textAcceptButton: "Yes",
+                  acceptPressed: () async {
+                    DialogUtils.showLoadingDialog(context);
+                    await FirebaseAuth.instance.signOut();
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AdminLoginPage(),
+                      ),
+                      (route) => false,
+                    );
+                  },
+                );
+              },
             ),
 
             const Spacer(),
@@ -181,7 +204,7 @@ class SidebarState extends State<Sidebar> {
           ),
         ),
         trailing: hasSubMenu
-            ?  Icon(
+            ? Icon(
                 isActive ? Icons.arrow_drop_down_outlined : Icons.arrow_right,
                 color: Colors.white70,
               )

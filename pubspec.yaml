@@ -55,6 +55,7 @@ dependencies:
   encrypt: ^5.0.3
   pointycastle: ^3.9.1
   typed_data: ^1.4.0
+  cloud_functions: ^5.1.5
 
 dev_dependencies:
   flutter_test:

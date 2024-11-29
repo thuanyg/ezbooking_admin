@@ -1,5 +1,8 @@
+import 'package:dio/dio.dart';
+import 'package:ezbooking_admin/cloud_functions/functions.dart';
 import 'package:ezbooking_admin/core/configs/app_colors.dart';
 import 'package:ezbooking_admin/core/configs/break_points.dart';
+import 'package:ezbooking_admin/core/utils/dialogs.dart';
 import 'package:ezbooking_admin/models/user.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -73,6 +76,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
                 children: [
                   TextFormField(
                     controller: _emailController,
+                    enabled: user == null,
                     decoration: const InputDecoration(labelText: 'Email'),
                     validator: (value) =>
                         value?.isEmpty ?? true ? 'Please enter an email' : null,
@@ -154,6 +158,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
 
   Future<void> _saveUser() async {
     if (_formKey.currentState?.validate() ?? false) {
+      DialogUtils.showLoadingDialog(context);
       try {
         final user = UserModel(
           id: _selectedUser?.id,
@@ -185,47 +190,36 @@ class _CustomerScreenState extends State<CustomerScreen> {
               return; // Stop the process if the email exists
             }
 
-            // Check if the phone number already exists in Firestore
-            final phoneQuery = await FirebaseFirestore.instance
-                .collection('users')
-                .where('phoneNumber', isEqualTo: _phoneController.text)
-                .get();
-
-            if (phoneQuery.docs.isNotEmpty) {
-              // Show error if phone number exists
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Phone number already in use.'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-              return; // Stop the process if the phone number exists
-            }
-
             // Create the user in FirebaseAuth
-            final authUser = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+            final authUser =
+                await FirebaseAuth.instance.createUserWithEmailAndPassword(
               email: _emailController.text,
               password: _passwordController.text,
             );
 
             // Now, create the user in Firestore
             final user = UserModel(
-              id: authUser.user!.uid,  // Use the UID from FirebaseAuth
+              id: authUser.user!.uid,
+              // Use the UID from FirebaseAuth
               email: _emailController.text,
               fullName: _fullNameController.text,
-              password: _passwordController.text, // Note: In practice, avoid storing passwords
+              password: _passwordController.text,
+              // Note: In practice, avoid storing passwords
               phoneNumber: _phoneController.text,
               gender: _selectedGender,
               birthday: _birthdayController.text,
               createdAt: Timestamp.now(),
             );
 
-            await FirebaseFirestore.instance.collection('users').doc(authUser.user!.uid).set(user.toJson());
-
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(authUser.user!.uid)
+                .set(user.toJson());
+            // Send password to email
+            await sendCode(user.email ?? "", user.password ?? "");
+            // Close dialog
+            Navigator.pop(context);
             if (mounted) {
-              Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   backgroundColor: AppColors.primaryColor,
@@ -238,6 +232,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
                 ),
               );
             }
+            return;
           } catch (e) {
             if (e is FirebaseAuthException) {
               String errorMessage = 'An unknown error occurred.';
@@ -245,7 +240,8 @@ class _CustomerScreenState extends State<CustomerScreen> {
               // Check for specific FirebaseAuth error codes
               switch (e.code) {
                 case 'email-already-in-use':
-                  errorMessage = 'The email address is already in use by another account.';
+                  errorMessage =
+                      'The email address is already in use by another account.';
                   break;
                 case 'invalid-email':
                   errorMessage = 'The email address is invalid.';
@@ -254,7 +250,8 @@ class _CustomerScreenState extends State<CustomerScreen> {
                   errorMessage = 'The password is too weak.';
                   break;
                 case 'operation-not-allowed':
-                  errorMessage = 'The operation is not allowed. Please enable email/password authentication in Firebase.';
+                  errorMessage =
+                      'The operation is not allowed. Please enable email/password authentication in Firebase.';
                   break;
                 case 'network-request-failed':
                   errorMessage = 'Network error. Please try again later.';
@@ -285,15 +282,29 @@ class _CustomerScreenState extends State<CustomerScreen> {
             }
           }
         } else {
-          // Update existing user
+          var snapshot = await _firestore
+              .collection('users')
+              .where('phoneNumber', isEqualTo: user.phoneNumber)
+              .get();
+
+          if (snapshot.docs.isNotEmpty && snapshot.docs[0].id != user.id) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Error: Phone number is already in use.'),
+                backgroundColor: Colors.red,
+              ),
+            );
+            return;
+          }
+
+          // Proceed to update the user if phone number is unique
           await _firestore
               .collection('users')
-              .doc(_selectedUser!.id)
+              .doc(user.id)
               .update(user.toJson());
         }
 
         if (mounted) {
-          Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               backgroundColor: AppColors.primaryColor,
@@ -317,28 +328,9 @@ class _CustomerScreenState extends State<CustomerScreen> {
             ),
           );
         }
-      }
-    }
-  }
-
-
-
-  Future<void> _deleteUser(UserModel user) async {
-    try {
-      await _firestore.collection('users').doc(user.id).delete();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('User deleted successfully')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+      } finally {
+        Navigator.pop(context);
+        Navigator.pop(context);
       }
     }
   }
@@ -351,6 +343,40 @@ class _CustomerScreenState extends State<CustomerScreen> {
     _phoneController.dispose();
     _birthdayController.dispose();
     super.dispose();
+  }
+
+  Future<bool> sendCode(String email, String otp) async {
+    try {
+      Dio dio = Dio();
+
+      String url = 'https://htthuan.id.vn/ezbooking/sendMail.php/sendEmail.php';
+
+      // Make the GET request with email and OTP as query parameters
+      final response = await dio.get(url, queryParameters: {
+        'email': email,
+        'otp': otp,
+      });
+
+      // Handle the response based on the status
+      if (response.statusCode == 200) {
+        final data = response.data;
+
+        if (data['status'] == 'success') {
+          print('Email sent successfully');
+          return true; // Successfully sent the email
+        } else {
+          print('Error: ${data['message']}');
+          return false; // Failure case
+        }
+      } else {
+        print('Failed to send request: ${response.statusCode}');
+        return false; // HTTP error
+      }
+    } catch (e) {
+      // Handle errors such as network issues
+      print('Error: $e');
+      return false;
+    }
   }
 
   @override
@@ -397,17 +423,17 @@ class _CustomerScreenState extends State<CustomerScreen> {
                 if (snapshot.hasError) {
                   return Center(child: Text('Error: ${snapshot.error}'));
                 }
-      
+
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
-      
+
                 final users = snapshot.data?.docs.map((doc) {
                       final data = doc.data() as Map<String, dynamic>;
                       return UserModel.fromJson({...data, 'id': doc.id});
                     }).toList() ??
                     [];
-      
+
                 if (users.isEmpty) {
                   return const Center(
                     child: Text(
@@ -416,11 +442,13 @@ class _CustomerScreenState extends State<CustomerScreen> {
                     ),
                   );
                 }
-      
+
                 return SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: SizedBox(
-                    width: Breakpoints.isDesktop(context) ? size.width * 0.7 : size.width * 3,
+                    width: Breakpoints.isDesktop(context)
+                        ? size.width * 0.7
+                        : size.width * 3,
                     child: DataTable(
                       headingTextStyle: const TextStyle(
                           color: Colors.white70, fontWeight: FontWeight.bold),
@@ -471,13 +499,38 @@ class _CustomerScreenState extends State<CustomerScreen> {
                                             'Are you sure you want to delete ${user.fullName}?'),
                                         actions: [
                                           TextButton(
-                                            onPressed: () => Navigator.pop(context),
+                                            onPressed: () =>
+                                                Navigator.pop(context),
                                             child: const Text('Cancel'),
                                           ),
                                           ElevatedButton(
-                                            onPressed: () {
+                                            onPressed: () async {
+                                              DialogUtils.showLoadingDialog(
+                                                  context);
+                                              // try {
+                                              //   await Functions.deleteUserById(
+                                              //       user.id ?? "");
+                                              // } on Exception catch (e) {
+                                              //   if (mounted) {
+                                              //     ScaffoldMessenger.of(context)
+                                              //         .showSnackBar(
+                                              //       SnackBar(
+                                              //         content:
+                                              //             Text(e.toString()),
+                                              //         backgroundColor:
+                                              //             Colors.red,
+                                              //       ),
+                                              //     );
+                                              //   }
+                                              // }
+
+                                              await _firestore
+                                                  .collection('users')
+                                                  .doc(user.id)
+                                                  .delete();
+
                                               Navigator.pop(context);
-                                              _deleteUser(user);
+                                              Navigator.pop(context);
                                             },
                                             style: ElevatedButton.styleFrom(
                                               backgroundColor:

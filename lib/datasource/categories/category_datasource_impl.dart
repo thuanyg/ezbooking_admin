@@ -10,7 +10,7 @@ class CategoryDatasourceImpl extends CategoryDatasource {
   @override
   Future<void> addCategory(Category category) async {
     try {
-      await _firestore.collection(_collectionName).add(category.toJson());
+      await _firestore.collection(_collectionName).doc(category.id).set(category.toJson());
     } catch (e) {
       throw Exception('Failed to add category: $e');
     }

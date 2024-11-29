@@ -1,26 +1,26 @@
 import "dart:html" as html;
 import 'package:ezbooking_admin/core/configs/break_points.dart';
-import 'package:ezbooking_admin/view/screen/customer.dart';
 import 'package:ezbooking_admin/view/screen/dashboard.dart';
-import 'package:ezbooking_admin/view/screen/event.dart';
 import 'package:ezbooking_admin/view/screen/management.dart';
-import 'package:ezbooking_admin/view/screen/settings.dart';
+import 'package:ezbooking_admin/view/screen/search_result.dart';
 import 'package:ezbooking_admin/view/widgets/header.dart';
 import 'package:ezbooking_admin/view/widgets/side_bar.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 class Homepage extends StatefulWidget {
   const Homepage({super.key});
 
   @override
-  _HomepageState createState() => _HomepageState();
+  HomepageState createState() => HomepageState();
 }
 
-class _HomepageState extends State<Homepage> {
+class HomepageState extends State<Homepage> {
   bool isSidebarVisible = true;
   int tabSelectedIndex = 1;
+  String? searchQuery;
   final GlobalKey<SidebarState> sideBarKey = GlobalKey<SidebarState>();
+
+  ValueNotifier<bool> isSearchResult = ValueNotifier(false);
 
   // Function to change the screen and update the URL
   void onTabSelected(int index) {
@@ -79,9 +79,8 @@ class _HomepageState extends State<Homepage> {
     final isDesktop = Breakpoints.isDesktop(context);
 
     List<Widget> screens = [
-      DashboardScreen(),
+      const DashboardScreen(),
       Management(sideBarKey: sideBarKey),
-      SettingScreen(),
     ];
 
     return Scaffold(
@@ -105,7 +104,10 @@ class _HomepageState extends State<Homepage> {
                 child: Sidebar(
                   key: sideBarKey,
                   selectedIndex: tabSelectedIndex,
-                  onTabChange: (index) => onTabSelected(index),
+                  onTabChange: (index) {
+                    isSearchResult.value = false;
+                    onTabSelected(index);
+                  },
                 ),
               ),
             ),
@@ -119,10 +121,22 @@ class _HomepageState extends State<Homepage> {
                       vertical: 10,
                     ),
                     child: Header(
+                      homeKey: widget.key as GlobalKey<HomepageState>,
                       onTapMenu: (ctx) => onTapMenu(ctx),
                     ),
                   ),
-                  Expanded(child: screens[tabSelectedIndex]),
+                  Expanded(
+                      child: ValueListenableBuilder(
+                        valueListenable: isSearchResult,
+                        builder: (context, value, child) {
+                          return value
+                              ? SearchResult(
+                            query: searchQuery ?? "",
+                            homeKey: widget.key as GlobalKey<HomepageState>,
+                          )
+                              : screens[tabSelectedIndex];
+                        },
+                      )),
                 ],
               ),
             ),

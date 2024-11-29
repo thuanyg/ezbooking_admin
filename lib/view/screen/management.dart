@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ezbooking_admin/core/configs/app_colors.dart';
 import 'package:ezbooking_admin/core/configs/break_points.dart';
+import 'package:ezbooking_admin/core/utils/dialogs.dart';
 import 'package:ezbooking_admin/models/category.dart';
 import 'package:ezbooking_admin/models/user.dart';
 import 'package:ezbooking_admin/providers/categories/category_provider.dart';
@@ -28,12 +29,10 @@ class Management extends StatefulWidget {
 
 class _ManagementState extends State<Management> {
   ValueNotifier<ScreenType> screenType = ValueNotifier(ScreenType.init);
-  late CategoryProvider categoryProvider;
 
   @override
   void initState() {
     super.initState();
-    categoryProvider = Provider.of<CategoryProvider>(context, listen: false);
   }
 
   @override
@@ -362,7 +361,7 @@ class _ManagementState extends State<Management> {
               ),
             ),
             const SizedBox(height: 16),
-              Row(
+            Row(
               children: [
                 _buildActionButton(
                   label: 'Add User',
@@ -630,14 +629,15 @@ class _ManagementState extends State<Management> {
       context: context,
       builder: (contextDialog) {
         return CreateCategoryDialog(
-          onCreate: (categoryName) {
+          onCreate: (categoryName) async{
             // Handle category creation logic here
             final category = Category(
               id: DateTime.now().microsecondsSinceEpoch.toString(),
               categoryName: categoryName,
               createdAt: DateTime.now(),
             );
-
+            final categoryProvider =
+                Provider.of<CategoryProvider>(context, listen: false);
             categoryProvider.addCategory(context, category);
           },
         );

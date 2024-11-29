@@ -1,9 +1,11 @@
+import 'package:ezbooking_admin/core/utils/dialogs.dart';
 import 'package:ezbooking_admin/datasource/categories/category_datasource.dart';
+import 'package:ezbooking_admin/datasource/categories/category_datasource_impl.dart';
 import 'package:ezbooking_admin/models/category.dart';
 import 'package:flutter/material.dart';
 
 class CategoryProvider with ChangeNotifier {
-  final CategoryDatasource _dataSource;
+  final CategoryDatasourceImpl _dataSource;
 
   CategoryProvider(this._dataSource);
 
@@ -28,6 +30,7 @@ class CategoryProvider with ChangeNotifier {
 
   // Add a new category and update state
   Future<void> addCategory(BuildContext context, Category category) async {
+    await Future.delayed(const Duration(microseconds: 800));
     _setLoading(true);
     try {
       bool isExisted = await _dataSource.isCategoryExisted(category.categoryName);
@@ -85,11 +88,17 @@ class CategoryProvider with ChangeNotifier {
         );
         return;
       }
+
       await _dataSource.deleteCategory(id);
+
       _categories.removeWhere((category) => category.id == id);
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        notifyListeners();
-      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This category has been deleted'),
+          backgroundColor: Colors.red,
+        ),
+      );
     } catch (e) {
       debugPrint('Error deleting category: $e');
     } finally {

@@ -9,6 +9,8 @@ import 'package:ezbooking_admin/providers/events/fetch_events_provider.dart';
 import 'package:ezbooking_admin/providers/events/update_event_provider.dart';
 import 'package:ezbooking_admin/providers/organizers/organizer_provider.dart';
 import 'package:ezbooking_admin/view/page/homepage.dart';
+import 'package:ezbooking_admin/view/page/login_page.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -21,12 +23,14 @@ void main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
   }
-  runApp(const MyApp());
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  MyApp({super.key});
 
+  final currentUser = FirebaseAuth.instance.currentUser;
+  final homeKey = GlobalKey<HomepageState>();
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
@@ -49,6 +53,9 @@ class MyApp extends StatelessWidget {
       child: MultiProvider(
         providers: [
           ChangeNotifierProvider(
+            create: (_) => CategoryProvider(CategoryDatasourceImpl()),
+          ),
+          ChangeNotifierProvider(
             create: (_) => FetchEventsProvider(EventDatasource()),
           ),
           ChangeNotifierProvider(
@@ -60,12 +67,9 @@ class MyApp extends StatelessWidget {
           ChangeNotifierProvider(
             create: (_) => DeleteEventProvider(EventDatasource()),
           ),
-          ChangeNotifierProvider(
-            create: (_) => CategoryProvider(CategoryDatasourceImpl()),
-          ),
           ChangeNotifierProvider(create: (_) => OrganizerProvider()),
         ],
-        child: const Homepage(),
+        child: currentUser == null ? const AdminLoginPage() : Homepage(key: homeKey),
       ),
     );
   }

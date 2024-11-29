@@ -1,9 +1,12 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:ezbooking_admin/view/page/homepage.dart';
 import 'package:flutter/material.dart';
 
 class Header extends StatelessWidget {
   final Function(BuildContext) onTapMenu;
-  const Header({super.key, required this.onTapMenu});
+  final GlobalKey<HomepageState> homeKey;
+
+  const Header({super.key, required this.onTapMenu, required this.homeKey});
 
   @override
   Widget build(BuildContext context) {
@@ -25,14 +28,20 @@ class Header extends StatelessWidget {
               color: const Color(0xFF1F2937),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const TextField(
-              style: TextStyle(color: Colors.white),
-              decoration: InputDecoration(
+            child: TextField(
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
                 icon: Icon(Icons.search, color: Colors.grey),
                 hintText: 'Search here',
                 hintStyle: TextStyle(color: Colors.grey),
                 border: InputBorder.none,
               ),
+              onSubmitted: (value) {
+                // Show widget search results
+                homeKey.currentState?.searchQuery = value.trim();
+                homeKey.currentState?.isSearchResult.value = false;
+                homeKey.currentState?.isSearchResult.value = true;
+              },
             ),
           ),
         ),
