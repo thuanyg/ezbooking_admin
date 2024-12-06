@@ -10,6 +10,7 @@ class UserModel {
   String? gender;
   String? birthday;
   Timestamp? createdAt;
+  bool isDelete;
 
   UserModel({
     this.id,
@@ -21,6 +22,7 @@ class UserModel {
     this.gender,
     this.createdAt,
     this.birthday,
+   required this.isDelete,
   });
 
   Map<String, dynamic> toJson() {
@@ -34,6 +36,7 @@ class UserModel {
       'gender': gender,
       'createdAt': createdAt,
       "birthday": birthday,
+      "isDelete": isDelete,
     };
   }
 
@@ -48,6 +51,7 @@ class UserModel {
       gender: json['gender'] as String?,
       createdAt: json['createdAt'] as Timestamp?,
       birthday: json['birthday'] as String?,
+      isDelete: json['isDelete'] as bool,
     );
   }
 

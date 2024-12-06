@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ezbooking_admin/core/configs/app_colors.dart';
 import 'package:ezbooking_admin/core/utils/app_utils.dart';
 import 'package:ezbooking_admin/core/utils/dialogs.dart';
@@ -104,17 +105,22 @@ class _OrganizerManagementScreenState extends State<OrganizerManagement> {
                     address: addressController.text,
                     facebook: facebookController.text,
                     website: websiteController.text,
+                    createdAt: Timestamp.now(),
+                    isDelete: false,
+                    avatarUrl: "",
                   );
 
                   if (organizer == null) {
                     await organizerProvider.registerOrganizer(newOrganizer);
                   } else {
+                    newOrganizer.passwordHash = organizer.passwordHash;
+                    newOrganizer.avatarUrl = organizer.avatarUrl;
+                    newOrganizer.createdAt = organizer.createdAt;
                     await organizerProvider.updateOrganizer(
                       organizer.id!,
                       newOrganizer,
                     );
                   }
-
                 } catch (e) {
                   ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Error: ${e.toString()}')));

@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:ezbooking_admin/models/organizer.dart';
 
 class Event {
   String? id; // Event ID, can be null for new events
@@ -15,6 +14,7 @@ class Event {
   String? videoUrl;
   String? additionalInfo;
   String? organizer;
+  String? category;
 
   Event({
     this.id,
@@ -23,6 +23,7 @@ class Event {
     required this.eventType,
     required this.description,
     required this.date,
+    this.category,
     required this.ticketPrice,
     this.thumbnail,
     this.poster,
@@ -38,6 +39,7 @@ class Event {
     return Event(
       id: map['id'],
       name: map['name'] ?? '',
+      category: map['category'] ?? '',
       location: map['location'] ?? '',
       eventType: map['eventType'] ?? '',
       thumbnail: map['thumbnail'] ?? '',
@@ -72,7 +74,7 @@ class Event {
       'poster': poster,
       'additionalInfo': additionalInfo,
       'organizer': organizer,
+      'category': category,
     };
   }
 }
-

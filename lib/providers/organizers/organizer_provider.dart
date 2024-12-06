@@ -28,7 +28,8 @@ class OrganizerProvider with ChangeNotifier {
   Future<void> fetchOrganizers() async {
     _setLoading(true);
     try {
-      final querySnapshot = await _organizerCollection.get();
+      final querySnapshot =
+          await _organizerCollection.where("isDelete", isEqualTo: false).get();
       _organizers = querySnapshot.docs
           .map((doc) => Organizer.fromJson(doc.data() as Map<String, dynamic>))
           .toList();
@@ -140,13 +141,7 @@ class OrganizerProvider with ChangeNotifier {
     _setLoading(true);
     try {
       // Delete from Firestore
-      await _organizerCollection.doc(id).delete();
-
-      // Delete user from Firebase Authentication
-      User? user = _auth.currentUser;
-      if (user?.uid == id) {
-        await user?.delete();
-      }
+      await _organizerCollection.doc(id).update({"isDelete": true});
 
       _organizers.removeWhere((organizer) => organizer.id == id);
       notifyListeners();

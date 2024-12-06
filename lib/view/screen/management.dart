@@ -546,6 +546,7 @@ class _ManagementState extends State<Management> {
                   final phoneQuery = await FirebaseFirestore.instance
                       .collection('users')
                       .where('phoneNumber', isEqualTo: _phoneController.text)
+                      .where("isDelete", isEqualTo: false)
                       .get();
 
                   if (phoneQuery.docs.isNotEmpty) {
@@ -580,6 +581,7 @@ class _ManagementState extends State<Management> {
                     gender: _selectedGender,
                     birthday: _birthdayController.text,
                     createdAt: Timestamp.now(),
+                    isDelete: false,
                   );
 
                   await FirebaseFirestore.instance
@@ -588,7 +590,7 @@ class _ManagementState extends State<Management> {
                       .set(user.toJson());
 
                   if (mounted) {
-                    Navigator.pop(context);
+                    // Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         backgroundColor: AppColors.primaryColor,
@@ -614,7 +616,9 @@ class _ManagementState extends State<Management> {
               }
             },
             style: ButtonStyle(
-              backgroundColor: WidgetStatePropertyAll(AppColors.primaryColor),
+              backgroundColor: WidgetStatePropertyAll(
+                AppColors.primaryColor,
+              ),
             ),
             child: const Text(
               'Save',
@@ -634,7 +638,7 @@ class _ManagementState extends State<Management> {
       context: context,
       builder: (contextDialog) {
         return CreateCategoryDialog(
-          onCreate: (categoryName) async{
+          onCreate: (categoryName) async {
             // Handle category creation logic here
             final category = Category(
               id: DateTime.now().microsecondsSinceEpoch.toString(),

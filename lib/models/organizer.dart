@@ -11,6 +11,7 @@ class Organizer {
   String? avatarUrl;
   String? passwordHash;
   Timestamp? createdAt;
+  bool isDelete;
 
   Organizer({
     this.id,
@@ -23,6 +24,7 @@ class Organizer {
     this.avatarUrl,
     this.passwordHash,
     this.createdAt,
+    required this.isDelete,
   });
 
   // Factory constructor to create an Organizer object from Firestore data
@@ -38,6 +40,7 @@ class Organizer {
       avatarUrl: json['avatarUrl'] as String?,
       passwordHash: json['passwordHash'] as String?,
       createdAt: json['createdAt'] as Timestamp?,
+      isDelete: json['isDelete'] as bool,
     );
   }
 
@@ -54,6 +57,7 @@ class Organizer {
       'avatarUrl': avatarUrl,
       'passwordHash': passwordHash,
       'createdAt': createdAt ?? FieldValue.serverTimestamp(),
+      'isDelete': isDelete,
     };
   }
 }

@@ -3,6 +3,7 @@ import 'package:ezbooking_admin/cloud_functions/functions.dart';
 import 'package:ezbooking_admin/core/configs/app_colors.dart';
 import 'package:ezbooking_admin/core/configs/break_points.dart';
 import 'package:ezbooking_admin/core/utils/dialogs.dart';
+import 'package:ezbooking_admin/core/utils/encryption_helper.dart';
 import 'package:ezbooking_admin/models/user.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -164,11 +165,13 @@ class _CustomerScreenState extends State<CustomerScreen> {
           id: _selectedUser?.id,
           email: _emailController.text,
           fullName: _fullNameController.text,
-          password: _selectedUser == null ? _passwordController.text : null,
+          password: _selectedUser == null ? _passwordController.text : _selectedUser?.password,
           phoneNumber: _phoneController.text,
           gender: _selectedGender,
+          avatarUrl: _selectedUser?.avatarUrl,
           birthday: _birthdayController.text,
           createdAt: _selectedUser?.createdAt ?? Timestamp.now(),
+          isDelete: false,
         );
 
         if (_selectedUser == null) {
@@ -209,6 +212,8 @@ class _CustomerScreenState extends State<CustomerScreen> {
               gender: _selectedGender,
               birthday: _birthdayController.text,
               createdAt: Timestamp.now(),
+              avatarUrl: "",
+              isDelete: false,
             );
 
             await FirebaseFirestore.instance
@@ -298,6 +303,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
           }
 
           // Proceed to update the user if phone number is unique
+
           await _firestore
               .collection('users')
               .doc(user.id)
@@ -418,7 +424,10 @@ class _CustomerScreenState extends State<CustomerScreen> {
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: StreamBuilder<QuerySnapshot>(
-              stream: _firestore.collection('users').snapshots(),
+              stream: _firestore
+                  .collection('users')
+                  .where("isDelete", isEqualTo: false)
+                  .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return Center(child: Text('Error: ${snapshot.error}'));
@@ -462,6 +471,15 @@ class _CustomerScreenState extends State<CustomerScreen> {
                         DataColumn(label: Text('Actions')),
                       ],
                       rows: users.map((user) {
+                        String dob = "-";
+                        if (user.birthday != "" || user.birthday != null) {
+                          RegExp regex = RegExp(
+                              r'^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$');
+                          if (regex.hasMatch(user.birthday!)) {
+                            dob = DateFormat("yyyy-MM-dd")
+                                .format(DateTime.parse(user.birthday!));
+                          }
+                        }
                         return DataRow(
                           cells: [
                             DataCell(Text(user.fullName ?? '-')),
@@ -469,13 +487,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
                             DataCell(Text(user.phoneNumber ?? "-")),
                             DataCell(Text(user.gender ?? '-')),
                             DataCell(
-                              Text(
-                                user.birthday != ""
-                                    ? DateFormat('yyyy-MM-dd').format(
-                                        DateTime.parse(user.birthday ?? ""),
-                                      )
-                                    : "-",
-                              ),
+                              Text(dob),
                             ),
                             DataCell(
                               Row(
@@ -507,27 +519,23 @@ class _CustomerScreenState extends State<CustomerScreen> {
                                             onPressed: () async {
                                               DialogUtils.showLoadingDialog(
                                                   context);
-                                              // try {
-                                              //   await Functions.deleteUserById(
-                                              //       user.id ?? "");
-                                              // } on Exception catch (e) {
-                                              //   if (mounted) {
-                                              //     ScaffoldMessenger.of(context)
-                                              //         .showSnackBar(
-                                              //       SnackBar(
-                                              //         content:
-                                              //             Text(e.toString()),
-                                              //         backgroundColor:
-                                              //             Colors.red,
-                                              //       ),
-                                              //     );
-                                              //   }
-                                              // }
-
-                                              await _firestore
-                                                  .collection('users')
-                                                  .doc(user.id)
-                                                  .delete();
+                                              try {
+                                                await FirebaseCloudFunctions
+                                                    .instance
+                                                    .deleteUser(user.id ?? "");
+                                              } on Exception catch (e) {
+                                                if (mounted) {
+                                                  ScaffoldMessenger.of(context)
+                                                      .showSnackBar(
+                                                    SnackBar(
+                                                      content:
+                                                          Text(e.toString()),
+                                                      backgroundColor:
+                                                          Colors.red,
+                                                    ),
+                                                  );
+                                                }
+                                              }
 
                                               Navigator.pop(context);
                                               Navigator.pop(context);
