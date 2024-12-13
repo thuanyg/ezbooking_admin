@@ -280,9 +280,7 @@ class _OrganizerCard extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 40,
-              backgroundImage: organizer.avatarUrl != null
-                  ? CachedNetworkImageProvider(organizer.avatarUrl!)
-                  : null,
+              backgroundImage: null,
               child: organizer.avatarUrl == null
                   ? const Icon(Icons.person, size: 40)
                   : null,
