@@ -51,7 +51,7 @@ class Header extends StatelessWidget {
         const CircleAvatar(
           radius: 20,
           backgroundImage: CachedNetworkImageProvider(
-            'https://png.pngtree.com/png-vector/20191101/ourmid/pngtree-cartoon-color-simple-male-avatar-png-image_1934459.jpg',
+            '',
           ),
         ),
       ],
