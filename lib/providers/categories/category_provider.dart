@@ -1,5 +1,3 @@
-import 'package:ezbooking_admin/core/utils/dialogs.dart';
-import 'package:ezbooking_admin/datasource/categories/category_datasource.dart';
 import 'package:ezbooking_admin/datasource/categories/category_datasource_impl.dart';
 import 'package:ezbooking_admin/models/category.dart';
 import 'package:flutter/material.dart';

@@ -1,10 +1,15 @@
 import 'package:ezbooking_admin/core/configs/app_colors.dart';
 import 'package:ezbooking_admin/core/configs/break_points.dart';
+import 'package:ezbooking_admin/models/order.dart';
+import 'package:ezbooking_admin/providers/events/fetch_event_provider.dart';
 import 'package:ezbooking_admin/providers/statistics/statistic_processors.dart';
 import 'package:ezbooking_admin/providers/statistics/statistic_provider.dart';
+import 'package:ezbooking_admin/view/widgets/syncfusion_flutter_charts.dart';
+import 'package:ezbooking_admin/view/widgets/table.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 
@@ -23,8 +28,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     statisticProvider = Provider.of<StatisticProvider>(context, listen: false);
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      statisticProvider.fetchStatistics();
+      if (statisticProvider.orders.isEmpty) {
+        statisticProvider.fetchOrders();
+      }
     });
 
     super.initState();
@@ -39,12 +47,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       backgroundColor: AppColors.backgroundColor,
       body: Consumer<StatisticProvider>(
         builder: (context, value, child) {
-
           // Calculate summary metrics
-          final totalRevenue = _calculateTotalRevenue(value.statistics);
-          final totalTicketsSold = _calculateTotalTicketsSold(value.statistics);
-          final eventCounts = _calculateEventCounts(value.statistics);
-          final revenueByEvent = _calculateRevenueByEvent(value.statistics);
+          final totalRevenue = _calculateTotalRevenue(value.orders);
+          final totalTicketsSold = _calculateTotalTicketsSold(value.orders);
 
           if (value.isLoading) {
             return const Center(child: CircularProgressIndicator());
@@ -72,17 +77,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   context,
                                 ),
                                 const SizedBox(height: 24),
-                                _buildOverviewCards(totalRevenue, totalTicketsSold),
+                                _buildOverviewCards(
+                                    totalRevenue, totalTicketsSold),
                                 const SizedBox(height: 24),
                                 // Charts Row
                                 ValueListenableBuilder(
                                   valueListenable: filterYear,
                                   builder: (context, value, child) =>
-                                      buildRevenueChart(
-                                          statisticProvider.statistics),
+                                      RevenueSyncfusionChart(
+                                          filterYear: filterYear,
+                                          orders: statisticProvider.orders),
                                 ),
+
+                                OrderStatusPieChart(
+                                    orders: statisticProvider.orders),
                                 const SizedBox(height: 24),
-                                _buildRevenueByEventChart(revenueByEvent),
+                                EventStatisticsTable(
+                                    orders: statisticProvider.orders),
+                                // _buildRevenueByEventChart(revenueByEvent),
                                 // Bottom Section
                                 // _buildRecentEventList(),
                               ],
@@ -101,35 +113,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-
   // Calculate total revenue across all statistics
-  double _calculateTotalRevenue(List<Statistic> statistics) {
-    return statistics.fold(0.0, (sum, stat) => sum + (stat.order.totalPrice * 0.1));
+  double _calculateTotalRevenue(List<Order> orders) {
+    return orders
+        .where((o) => o.status == "success")
+        .fold(0.0, (sum, order) => sum + (order.totalPrice * 0.1));
   }
 
   // Calculate total tickets sold
-  int _calculateTotalTicketsSold(List<Statistic> statistics) {
-    return statistics.fold(0, (sum, stat) => sum + stat.order.ticketQuantity);
-  }
-
-  // Calculate event counts
-  Map<String, int> _calculateEventCounts(List<Statistic> statistics) {
-    final Map<String, int> eventCounts = {};
-    for (var stat in statistics) {
-      eventCounts[stat.event.name] =
-          (eventCounts[stat.event.name] ?? 0) + stat.order.ticketQuantity;
-    }
-    return eventCounts;
-  }
-
-  // Calculate revenue by event
-  Map<String, double> _calculateRevenueByEvent(List<Statistic> statistics) {
-    final Map<String, double> revenueByEvent = {};
-    for (var stat in statistics) {
-      revenueByEvent[stat.event.name] =
-          (revenueByEvent[stat.event.name] ?? 0) + (stat.order.totalPrice * 0.1);
-    }
-    return revenueByEvent;
+  int _calculateTotalTicketsSold(List<Order> orders) {
+    return orders
+        .where((o) => o.status == "success")
+        .fold(0, (sum, order) => sum + order.ticketQuantity);
   }
 
   // Overview Cards Widget
@@ -213,10 +208,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-
   Widget _buildTicketSoldCard(
       StatisticProvider provider, BuildContext context) {
-    final orders = provider.getOrders(provider.statistics);
+    int totalTicketSoldToday = provider.countTicketsSoldToday(provider.orders);
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -235,7 +229,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            provider.calculateTicketToday(orders).toString(),
+            totalTicketSoldToday.toString(),
             style: const TextStyle(
               color: Colors.white,
               fontSize: 32,
@@ -247,7 +241,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const Spacer(),
               TextButton(
                 onPressed: () async {
-                  await showOrderListBottomSheet(provider.statistics, context);
+                  await showOrderListBottomSheet(context, provider.orders);
                 },
                 child: const Row(
                   children: [
@@ -294,7 +288,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               primaryYAxis: NumericAxis(
                 labelStyle: const TextStyle(color: Colors.white),
                 labelFormat: '{value}',
-                numberFormat: NumberFormat.currency(locale: 'en_US', symbol: '\$', decimalDigits: 0),
+                numberFormat: NumberFormat.currency(
+                    locale: 'en_US', symbol: '\$', decimalDigits: 0),
               ),
               series: <CartesianSeries>[
                 ColumnSeries<MapEntry<String, double>, String>(
@@ -317,13 +312,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> showOrderListBottomSheet(
-      List<Statistic> statistics, BuildContext context) async {
+      BuildContext context, List<Order> orders) async {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       builder: (context) {
         return Container(
-          height: MediaQuery.of(context).size.height * 0.85,
+          height: MediaQuery.of(context).size.height * 0.9,
+          width: double.infinity,
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
             color: AppColors.drawerColor,
@@ -332,45 +328,84 @@ class _DashboardScreenState extends State<DashboardScreen> {
               topRight: Radius.circular(20),
             ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Title
-              const Center(
-                child: Text(
-                  'Ticket Order List',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+          child: DefaultTabController(
+            length: 3,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                // Title
+                const Center(
+                  child: Text(
+                    'Ticket Order List',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 10),
+                const SizedBox(height: 10),
 
-              // Divider
-              const Divider(color: Colors.grey),
-
-              // Expandable list of orders
-              Expanded(
-                child: OrderTicketList(statistics: statistics),
-              ),
-            ],
+                // Tabs
+                TabBar(
+                  labelColor: AppColors.primaryColor,
+                  indicatorColor: AppColors.primaryColor,
+                  dividerHeight: .1,
+                  unselectedLabelColor: Colors.white,
+                  onTap: (value) {},
+                  tabs: const [
+                    Tab(text: "Success"),
+                    Tab(text: "Pending"),
+                    Tab(text: "Cancelled"),
+                  ],
+                ),
+                // TabBarView with IndexedStack
+                Expanded(
+                  child: Builder(
+                    builder: (context) {
+                      final tabController = DefaultTabController.of(context)!;
+                      return AnimatedBuilder(
+                        animation: tabController,
+                        builder: (context, _) {
+                          return IndexedStack(
+                            index: tabController.index,
+                            children: [
+                              OrderTicketList(
+                                status: "success",
+                                orders: orders,
+                              ),
+                              OrderTicketList(
+                                status: "pending",
+                                orders: orders,
+                              ),
+                              OrderTicketList(
+                                status: "cancelled",
+                                orders: orders,
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
     );
   }
 
-  Widget buildRevenueChart(List<Statistic> statistics) {
-    // Process revenue data for the year 2020
+  Widget buildRevenueChart(List<Order> orders) {
+    // Process revenue data for the year
     final revenueSpots = RevenueChartProcessor.processRevenueData(
-        statistics, int.parse(filterYear.value));
+        orders, int.parse(filterYear.value));
 
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: const Color(0xFF171723),
+        color: const Color(0xFF1D1E33), // Darker background for contrast
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -383,7 +418,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 'Sales Revenue',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 16,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold, // Bolder text
                 ),
               ),
               PopupMenuButton<String>(
@@ -411,7 +447,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1E1E2D),
+                    color: const Color(0xFF2D2E3F),
+                    // Slightly different color for the button
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -424,7 +461,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 24),
           SizedBox(
-            height: 200,
+            height: 250, // Increased chart height for better visibility
             child: LineChart(
               LineChartData(
                 gridData: FlGridData(
@@ -434,7 +471,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   horizontalInterval: 1,
                   getDrawingHorizontalLine: (value) {
                     return FlLine(
-                      color: Colors.white.withOpacity(0.1),
+                      color: Colors.white.withOpacity(0.2),
+                      // Lighter grid lines
                       strokeWidth: 1,
                     );
                   },
@@ -461,10 +499,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ];
                         int index = value.toInt();
                         return Text(
-                         months[index],
+                          months[index],
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.5),
-                            fontSize: 12,
+                            color: Colors.white.withOpacity(0.6),
+                            fontSize: 14, // Larger font size
+                            fontWeight: FontWeight.bold, // Bolder text
                           ),
                         );
                       },
@@ -477,8 +516,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         return Text(
                           '\$${value.toInt()}',
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.5),
-                            fontSize: 12,
+                            color: Colors.white.withOpacity(0.6),
+                            fontSize: 14, // Larger font size
+                            fontWeight: FontWeight.bold, // Bolder text
                           ),
                         );
                       },
@@ -489,9 +529,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   topTitles: const AxisTitles(
                       sideTitles: SideTitles(showTitles: false)),
                 ),
-                borderData: FlBorderData(show: false),
+                borderData: FlBorderData(
+                  show: true,
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.2),
+                    // Soft border for the chart
+                    width: 1,
+                  ),
+                ),
                 lineBarsData: [
-                  RevenueChartProcessor.createRevenueChartBar(revenueSpots)
+                  // Apply a gradient color to the line for a sleek effect
+                  LineChartBarData(
+                    spots: revenueSpots,
+                    isCurved: true,
+                    color: Color(0xFF4C72B0),
+                    // Gradient colors
+                    dotData: FlDotData(show: false),
+                    belowBarData:
+                        BarAreaData(show: true, color: Color(0xFF4C72B0)),
+                    aboveBarData: BarAreaData(show: false),
+                  ),
                 ],
               ),
             ),
@@ -630,46 +687,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
 }
 
 class OrderTicketList extends StatelessWidget {
-  final List<Statistic> statistics;
+  final String status;
+  final List<Order> orders;
 
-  const OrderTicketList({Key? key, required this.statistics}) : super(key: key);
+  const OrderTicketList(
+      {super.key, required this.status, required this.orders});
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // Responsive grid count based on screen width
-        int crossAxisCount = constraints.maxWidth > 1200
-            ? 3
-            : constraints.maxWidth > 800
-                ? 2
-                : 1;
-
-        return Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: ListView.builder(
-            itemCount: statistics.length,
-            itemBuilder: (context, index) {
-              return OrderTicketCard(
-                statistic: statistics[index],
-              );
-            },
-          ),
-        );
-      },
+    final ordersFiltered = orders.where((o) => o.status == status).toList();
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 10),
+      child: ListView.builder(
+        itemCount: ordersFiltered.length,
+        itemBuilder: (context, index) {
+          return OrderTicketCard(order: ordersFiltered[index]);
+        },
+      ),
     );
   }
 }
 
 class OrderTicketCard extends StatelessWidget {
-  final Statistic statistic;
+  final Order order;
 
-  const OrderTicketCard({super.key, required this.statistic});
+  const OrderTicketCard({super.key, required this.order});
 
   // Helper method to get status color
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
-      case 'paid':
+      case 'success':
         return Colors.green;
       case 'pending':
         return Colors.orange;
@@ -682,232 +729,447 @@ class OrderTicketCard extends StatelessWidget {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF1E1E2D),
-            Color(0xFF171723),
-          ],
+  void _showOrderDetailsBottomSheet(BuildContext context, Order order) {
+    final eventProvider =
+        Provider.of<FetchEventProvider>(context, listen: false);
+    eventProvider.fetchEventById(order.eventID);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+      ),
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.9,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        expand: false,
+        shouldCloseOnMinExtent: false,
+        builder: (context, scrollController) => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+          decoration: BoxDecoration(
+            color: AppColors.backgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
+          ),
+          child: Consumer<FetchEventProvider>(
+            builder: (context, value, child) {
+              if (value.isLoading) {
+                return Center(
+                  child: Lottie.asset(
+                    "assets/animations/loading.json",
+                    height: 60,
+                  ),
+                );
+              }
+              if (value.event != null) {
+                final event = value.event;
+                return ListView(
+                  controller: scrollController,
+                  children: [
+                    // Header
+                    Center(
+                      child: Container(
+                        width: 50,
+                        height: 5,
+                        margin: const EdgeInsets.only(bottom: 20),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                    Text(
+                      'Order #${order.id}',
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Status and Date
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildDetailChip(
+                          icon: Icons.check_circle_outline,
+                          label: 'Status',
+                          value: order.status.toUpperCase(),
+                          color: _getStatusColor(order.status),
+                        ),
+                        _buildDetailChip(
+                          icon: Icons.calendar_today,
+                          label: 'Date',
+                          value: DateFormat('dd MMM yyyy\nHH:mm')
+                              .format(order.createdAt.toDate()),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Event Information Section
+                    _buildSectionTitle('Event Details'),
+                    const SizedBox(height: 10),
+                    _buildDetailRow('Event Name', event?.name ?? ""),
+                    _buildDetailRow(
+                        'Event Date',
+                        DateFormat('dd MMM yyyy, HH:mm')
+                            .format(event?.date ?? DateTime.now())),
+                    _buildDetailRow('Location', event?.location ?? ""),
+                    _buildDetailRow('Event Type', event?.eventType ?? ""),
+
+                    // Order Details Section
+                    const SizedBox(height: 20),
+                    _buildSectionTitle('Order Details'),
+                    const SizedBox(height: 10),
+                    _buildDetailRow(
+                      'Tickets Booked',
+                      '${order.ticketQuantity} x ${NumberFormat.currency(symbol: '\$').format(order.ticketPrice)}',
+                    ),
+                    _buildDetailRow(
+                      'Total Amount',
+                      NumberFormat.currency(symbol: '\$')
+                          .format(order.ticketQuantity * order.ticketPrice),
+                    ),
+                    if (order.discount != null)
+                      _buildDetailRow(
+                        'Discount',
+                        NumberFormat.currency(symbol: '\$')
+                            .format(order.discount!),
+                      ),
+
+                    // Payment Information
+                    const SizedBox(height: 20),
+                    _buildSectionTitle('Payment Information'),
+                    const SizedBox(height: 10),
+                    _buildDetailRow(
+                        'Payment Method', order.paymentMethod ?? 'VNPay'),
+                    _buildDetailRow('Order Type', order.orderType),
+                    _buildDetailRow('Payment ID', order.id ?? 'N/A'),
+
+                    const SizedBox(height: 30),
+                    // Close Button
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryColor,
+                        padding: const EdgeInsets.symmetric(vertical: 15),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Close',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              }
+
+              return const SizedBox.shrink();
+            },
+          ),
         ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            spreadRadius: 1,
-            blurRadius: 5,
-            offset: const Offset(0, 3),
+      ),
+    );
+  }
+
+  // Helper method to build detail chips
+  Widget _buildDetailChip({
+    required IconData icon,
+    required String label,
+    required String value,
+    Color color = Colors.grey,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 30),
+          const SizedBox(height: 5),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.grey.shade600,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Stack(
-          children: [
-            // Background pattern or texture
+    );
+  }
 
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Order Header
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Order #${statistic.order.id}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: _getStatusColor(statistic.order.status)
-                              .withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          statistic.order.status,
-                          style: TextStyle(
-                            color: _getStatusColor(statistic.order.status),
+// Helper method to build section titles
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: const TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.bold,
+        color: Colors.white,
+      ),
+    );
+  }
+
+// Helper method to build detail rows
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white60,
+              fontSize: 15,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              value,
+              maxLines: 2,
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+                color: Colors.white60,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => _showOrderDetailsBottomSheet(context, order),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF1E1E2D),
+              Color(0xFF171723),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              spreadRadius: 1,
+              blurRadius: 5,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Stack(
+            children: [
+              // Background pattern or texture
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Order Header
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Order #${order.id}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  // Event and Ticket Details
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Customer: ${statistic.user.fullName}',
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 16,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Event: ${statistic.event.name}',
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 16,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        'Organizer: ${statistic.organizer.name}',
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 16,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.confirmation_number_outlined,
-                            color: Colors.white70,
-                            size: 20,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color:
+                                _getStatusColor(order.status).withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '${statistic.order.ticketQuantity} Ticket(s)',
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 14,
+                          child: Text(
+                            order.status,
+                            style: TextStyle(
+                              color: _getStatusColor(order.status),
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          Text(
-                            'Price: \$${statistic.ticket.ticketPrice}',
-                            style: const TextStyle(
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    // Event and Ticket Details
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.confirmation_number_outlined,
                               color: Colors.white70,
-                              fontSize: 14,
+                              size: 20,
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.calendar_today_outlined,
-                            color: Colors.white70,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            "Created Date: ${DateFormat('MMM dd, yyyy').format(statistic.order.createdAt.toDate())}",
-                            style: const TextStyle(
+                            const SizedBox(width: 8),
+                            Text(
+                              '${order.ticketQuantity} Ticket(s)',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Price: \$${order.ticketPrice}',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.calendar_today_outlined,
                               color: Colors.white70,
-                              fontSize: 14,
+                              size: 20,
                             ),
+                            const SizedBox(width: 8),
+                            Text(
+                              DateFormat('MMM dd, yyyy')
+                                  .format(order.createdAt.toDate()),
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    // Footer with Total Price
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Total Price',
+                          style: TextStyle(
+                            color: Colors.white54,
+                            fontSize: 14,
                           ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  // Footer with Total Price
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Total Price',
-                        style: TextStyle(
-                          color: Colors.white54,
-                          fontSize: 14,
                         ),
-                      ),
-                      Text(
-                        '\$${statistic.order.totalPrice.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                        Text(
+                          '\$${order.totalPrice.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Deduction',
-                        style: TextStyle(
-                          color: Colors.white54,
-                          fontSize: 14,
+                      ],
+                    ),
+                    const Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Deduction',
+                          style: TextStyle(
+                            color: Colors.white54,
+                            fontSize: 14,
+                          ),
                         ),
-                      ),
-                      Text(
-                        '10%',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                        Text(
+                          '10%',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Organizer receive:',
-                        style: TextStyle(
-                          color: Colors.white54,
-                          fontSize: 14,
+                      ],
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Organizer receive:',
+                          style: TextStyle(
+                            color: Colors.white54,
+                            fontSize: 14,
+                          ),
                         ),
-                      ),
-                      Text(
-                        '\$${(statistic.order.totalPrice * 0.9).toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                        Text(
+                          '\$${(order.totalPrice * 0.9).toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'EzBooking receive:',
-                        style: TextStyle(
-                          color: Colors.white54,
-                          fontSize: 16,
+                      ],
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'EzBooking receive:',
+                          style: TextStyle(
+                            color: AppColors.primaryColor,
+                            fontSize: 14,
+                          ),
                         ),
-                      ),
-                      Text(
-                        '\$${(statistic.order.totalPrice * 0.1).toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                        Text(
+                          '\$${(order.totalPrice * 0.1).toStringAsFixed(2)}',
+                          style: TextStyle(
+                            color: AppColors.primaryColor,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

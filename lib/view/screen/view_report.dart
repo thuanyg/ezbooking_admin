@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:ezbooking_admin/core/configs/app_colors.dart';
+import 'package:ezbooking_admin/models/order.dart';
 import 'package:ezbooking_admin/providers/statistics/statistic_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -23,7 +24,7 @@ class _StatisticsSummaryPageState extends State<StatisticsSummaryPage> {
     super.initState();
     statisticProvider = Provider.of<StatisticProvider>(context, listen: false);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      statisticProvider.fetchStatistics();
+      statisticProvider.fetchOrders();
     });
   }
 
@@ -46,10 +47,8 @@ class _StatisticsSummaryPageState extends State<StatisticsSummaryPage> {
           }
 
           // Calculate summary metrics
-          final totalRevenue = _calculateTotalRevenue(value.statistics);
-          final totalTicketsSold = _calculateTotalTicketsSold(value.statistics);
-          final eventCounts = _calculateEventCounts(value.statistics);
-          final revenueByEvent = _calculateRevenueByEvent(value.statistics);
+          final totalRevenue = _calculateTotalRevenue(value.orders);
+          final totalTicketsSold = _calculateTotalTicketsSold(value.orders);
 
           return SingleChildScrollView(
             child: Padding(
@@ -63,17 +62,17 @@ class _StatisticsSummaryPageState extends State<StatisticsSummaryPage> {
                   SizedBox(height: 20),
 
                   // Event Distribution Chart
-                  _buildEventDistributionChart(eventCounts),
+                  // _buildEventDistributionChart(eventCounts),
 
                   SizedBox(height: 20),
 
                   // Revenue by Event Chart
-                  _buildRevenueByEventChart(revenueByEvent),
+                  // _buildRevenueByEventChart(revenueByEvent),
 
                   SizedBox(height: 20),
 
                   // Detailed Statistics Table
-                  _buildDetailedStatisticsTable(value.statistics),
+                  // _buildDetailedStatisticsTable(value.statistics),
                 ],
               ),
             ),
@@ -84,34 +83,15 @@ class _StatisticsSummaryPageState extends State<StatisticsSummaryPage> {
   }
 
   // Calculate total revenue across all statistics
-  double _calculateTotalRevenue(List<Statistic> statistics) {
-    return statistics.fold(0.0, (sum, stat) => sum + (stat.order.totalPrice * 0.1));
+  double _calculateTotalRevenue(List<Order> orders) {
+    return orders.fold(0.0, (sum, order) => sum + (order.totalPrice * 0.1));
   }
 
   // Calculate total tickets sold
-  int _calculateTotalTicketsSold(List<Statistic> statistics) {
-    return statistics.fold(0, (sum, stat) => sum + stat.order.ticketQuantity);
+  int _calculateTotalTicketsSold(List<Order> orders) {
+    return orders.fold(0, (sum, order) => sum + order.ticketQuantity);
   }
 
-  // Calculate event counts
-  Map<String, int> _calculateEventCounts(List<Statistic> statistics) {
-    final Map<String, int> eventCounts = {};
-    for (var stat in statistics) {
-      eventCounts[stat.event.name] =
-          (eventCounts[stat.event.name] ?? 0) + stat.order.ticketQuantity;
-    }
-    return eventCounts;
-  }
-
-  // Calculate revenue by event
-  Map<String, double> _calculateRevenueByEvent(List<Statistic> statistics) {
-    final Map<String, double> revenueByEvent = {};
-    for (var stat in statistics) {
-      revenueByEvent[stat.event.name] =
-          (revenueByEvent[stat.event.name] ?? 0) + (stat.order.totalPrice * 0.1);
-    }
-    return revenueByEvent;
-  }
 
   // Overview Cards Widget
   Widget _buildOverviewCards(double totalRevenue, int totalTicketsSold) {
@@ -294,7 +274,7 @@ class _StatisticsSummaryPageState extends State<StatisticsSummaryPage> {
   }
 
   // Detailed Statistics Table
-  Widget _buildDetailedStatisticsTable(List<Statistic> statistics) {
+  Widget _buildDetailedStatisticsTable(List<Order> statistics) {
     return Card(
       elevation: 5,
       color: AppColors.drawerColor,
@@ -343,21 +323,23 @@ class _StatisticsSummaryPageState extends State<StatisticsSummaryPage> {
                 rows: statistics
                     .map((stat) => DataRow(cells: [
                           DataCell(Text(
-                            stat.event.name,
+                            "stat.event.name",
                             style: const TextStyle(color: Colors.white70),
                           )),
                           DataCell(Text(
-                            stat.order.ticketQuantity.toString(),
+                            "1",
                             style: const TextStyle(color: Colors.white70),
                           )),
                           DataCell(Text(
-                            NumberFormat.currency(symbol: '\$')
-                                .format(stat.order.totalPrice),
+                            // NumberFormat.currency(symbol: '\$')
+                            //     .format(stat.order.totalPrice),
+                            "12",
                             style: const TextStyle(color: Colors.white70),
                           )),
                           DataCell(Text(
-                              DateFormat('yyyy-MM-dd')
-                                  .format(stat.order.createdAt.toDate()),
+                              // DateFormat('yyyy-MM-dd')
+                              //     .format(stat.order.createdAt.toDate()),
+                            "1",
                               style: const TextStyle(color: Colors.white70))),
                         ]))
                     .toList(),

@@ -5,6 +5,7 @@ import 'package:ezbooking_admin/firebase_options.dart';
 import 'package:ezbooking_admin/providers/categories/category_provider.dart';
 import 'package:ezbooking_admin/providers/events/create_event_provider.dart';
 import 'package:ezbooking_admin/providers/events/delete_event_provider.dart';
+import 'package:ezbooking_admin/providers/events/fetch_event_provider.dart';
 import 'package:ezbooking_admin/providers/events/update_event_provider.dart';
 import 'package:ezbooking_admin/providers/organizers/organizer_provider.dart';
 import 'package:ezbooking_admin/providers/statistics/statistic_provider.dart';
@@ -25,22 +26,28 @@ void main() async {
   } catch (e) {
     print('Error initializing Firebase: $e');
   }
-  runApp(MultiProvider(providers: [
-    ChangeNotifierProvider(
-      create: (_) => CategoryProvider(CategoryDatasourceImpl()),
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => CategoryProvider(CategoryDatasourceImpl()),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => UpdateEventProvider(EventDatasource()),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => CreateEventProvider(EventDatasource()),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => DeleteEventProvider(EventDatasource()),
+        ),
+        ChangeNotifierProvider(create: (_) => OrganizerProvider()),
+        ChangeNotifierProvider(create: (_) => StatisticProvider()),
+        ChangeNotifierProvider(create: (_) => FetchEventProvider()),
+      ],
+      child: MyApp(),
     ),
-    ChangeNotifierProvider(
-      create: (_) => UpdateEventProvider(EventDatasource()),
-    ),
-    ChangeNotifierProvider(
-      create: (_) => CreateEventProvider(EventDatasource()),
-    ),
-    ChangeNotifierProvider(
-      create: (_) => DeleteEventProvider(EventDatasource()),
-    ),
-    ChangeNotifierProvider(create: (_) => OrganizerProvider()),
-    ChangeNotifierProvider(create: (_) => StatisticProvider()),
-  ], child: MyApp()));
+  );
 }
 
 class MyApp extends StatelessWidget {

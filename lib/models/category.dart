@@ -10,6 +10,16 @@ class Category {
     required this.createdAt,
   });
 
+  // Override equality operator
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is Category && other.id == id;
+  }
+
+  @override
+  int get hashCode => id.hashCode;
+
   // Named constructor for creating an instance from a Firestore document snapshot
   factory Category.fromJson(Map<String, dynamic> json) {
     return Category(
